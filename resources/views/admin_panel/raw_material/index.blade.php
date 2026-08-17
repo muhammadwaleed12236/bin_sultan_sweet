@@ -492,19 +492,25 @@
             <table id="outsTable" class="rm-tbl align-middle">
               <thead>
                 <tr>
-                  <th style="width: 45px;">#</th>
+                  <th style="width: 40px;">#</th>
                   <th>DC No</th>
                   <th>Date</th>
                   <th>Issued To / Location</th>
                   <th>Taken By (Person)</th>
-                  <th>Items Count</th>
+                  <th>Items Issued</th>
+                  <th class="text-end">Total Value (Rs)</th>
                   <th>Notes / Remarks</th>
                   <th>Created By</th>
-                  <th class="text-center" style="width: 130px;">Actions</th>
+                  <th class="text-center" style="width: 150px;">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 @foreach($outs as $index => $o)
+                @php
+                  $dcTotal = (float)($o->total_amount ?: $o->items->sum(function($it) {
+                      return ($it->qty ?: 0) * ($it->unit_price ?: ($it->rawMaterial?->unit_price ?? 0));
+                  }));
+                @endphp
                 <tr>
                   <td class="text-muted fw-bold">{{ $index + 1 }}</td>
                   <td>
@@ -522,17 +528,95 @@
                     <strong><i class="fa fa-user text-secondary me-1"></i>{{ $o->taken_by }}</strong>
                   </td>
                   <td>
-                    <span class="rm-badge rm-badge-success">{{ $o->items->count() }} Item(s)</span>
+                    <div class="d-flex align-items-center gap-1 flex-wrap">
+                      <span class="rm-badge rm-badge-success">{{ $o->items->count() }} Item(s)</span>
+                      <button type="button" class="btn btn-sm btn-outline-info py-0 px-1 btn-quick-view-out"
+                              data-out="{{ json_encode([
+                                  'id' => $o->id,
+                                  'issue_no' => $o->issue_no,
+                                  'out_date' => \Carbon\Carbon::parse($o->out_date)->format('d-M-Y'),
+                                  'location' => $o->location,
+                                  'taken_by' => $o->taken_by,
+                                  'notes' => $o->notes,
+                                  'created_by' => $o->creator->name ?? 'Admin',
+                                  'total_amount' => $dcTotal,
+                                  'items' => $o->items->map(function($it) {
+                                      $p = (float)($it->unit_price ?: ($it->rawMaterial?->unit_price ?? 0));
+                                      return [
+                                          'name' => $it->rawMaterial->name ?? 'Item',
+                                          'unit' => $it->unit ?? ($it->rawMaterial?->unit ?? 'KG'),
+                                          'qty' => (float)$it->qty,
+                                          'unit_price' => $p,
+                                          'line_total' => (float)($it->line_total ?: ($it->qty * $p)),
+                                          'item_note' => $it->item_note ?? '-'
+                                      ];
+                                  })
+                              ]) }}"
+                              title="Quick View Items">
+                        <i class="bi bi-eye"></i> View
+                      </button>
+                    </div>
                   </td>
-                  <td class="text-muted small">{{ \Illuminate\Support\Str::limit($o->notes ?? '-', 35) }}</td>
+                  <td class="text-end fw-bold text-dark" style="font-size: .9rem;">
+                    Rs {{ number_format($dcTotal, 2) }}
+                  </td>
+                  <td class="text-muted small">{{ \Illuminate\Support\Str::limit($o->notes ?? '-', 30) }}</td>
                   <td class="text-muted small">{{ $o->creator->name ?? 'Admin' }}</td>
                   <td class="text-center">
-                    <a href="{{ route('raw_materials.out.dc', $o->id) }}" class="btn btn-sm btn-outline-primary me-1" title="Print Delivery Challan (DC)">
-                      <i class="bi bi-printer"></i> DC
-                    </a>
-                    <a href="{{ route('raw_materials.out.delete', $o->id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this Material Out DC and revert stock?')" title="Delete">
-                      <i class="bi bi-trash"></i>
-                    </a>
+                    <div class="d-flex gap-1 justify-content-center">
+                      <button type="button" class="btn btn-sm btn-outline-info py-1 px-2 btn-quick-view-out"
+                              data-out="{{ json_encode([
+                                  'id' => $o->id,
+                                  'issue_no' => $o->issue_no,
+                                  'out_date' => \Carbon\Carbon::parse($o->out_date)->format('d-M-Y'),
+                                  'location' => $o->location,
+                                  'taken_by' => $o->taken_by,
+                                  'notes' => $o->notes,
+                                  'created_by' => $o->creator->name ?? 'Admin',
+                                  'total_amount' => $dcTotal,
+                                  'items' => $o->items->map(function($it) {
+                                      $p = (float)($it->unit_price ?: ($it->rawMaterial?->unit_price ?? 0));
+                                      return [
+                                          'name' => $it->rawMaterial->name ?? 'Item',
+                                          'unit' => $it->unit ?? ($it->rawMaterial?->unit ?? 'KG'),
+                                          'qty' => (float)$it->qty,
+                                          'unit_price' => $p,
+                                          'line_total' => (float)($it->line_total ?: ($it->qty * $p)),
+                                          'item_note' => $it->item_note ?? '-'
+                                      ];
+                                  })
+                              ]) }}"
+                              title="Quick View">
+                        <i class="bi bi-eye"></i>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 btn-edit-out"
+                              data-out="{{ json_encode([
+                                  'id' => $o->id,
+                                  'issue_no' => $o->issue_no,
+                                  'out_date' => $o->out_date,
+                                  'location' => $o->location,
+                                  'taken_by' => $o->taken_by,
+                                  'notes' => $o->notes,
+                                  'items' => $o->items->map(function($it) {
+                                      return [
+                                          'raw_material_id' => $it->raw_material_id,
+                                          'qty' => (float)$it->qty,
+                                          'unit_price' => (float)($it->unit_price ?: ($it->rawMaterial?->unit_price ?? 0)),
+                                          'unit' => $it->unit,
+                                          'item_note' => $it->item_note
+                                      ];
+                                  })
+                              ]) }}"
+                              title="Edit DC">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                      <a href="{{ route('raw_materials.out.dc', $o->id) }}" class="btn btn-sm btn-outline-dark py-1 px-2" title="Print Delivery Challan (DC)">
+                        <i class="bi bi-printer"></i>
+                      </a>
+                      <a href="{{ route('raw_materials.out.delete', $o->id) }}" class="btn btn-sm btn-outline-danger py-1 px-2" onclick="return confirm('Delete this Material Out DC and revert stock?')" title="Delete">
+                        <i class="bi bi-trash"></i>
+                      </a>
+                    </div>
                   </td>
                 </tr>
                 @endforeach
@@ -1080,92 +1164,174 @@
   </div>
 </div>
 
-<!-- 2.5 NEW RAW MATERIAL OUT (DC) MODAL -->
+<!-- 2.5 NEW / EDIT RAW MATERIAL OUT (DC) MODAL -->
 <div class="modal fade" id="outModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content border-0 shadow">
-      <div class="modal-header bg-dark text-white">
-        <h5 class="modal-title fw-bold" id="outModalTitle"><i class="fa fa-truck me-2"></i>New Raw Material Out (Delivery Challan)</h5>
+      <div class="modal-header bg-dark text-white py-2 px-3">
+        <div class="d-flex align-items-center gap-2">
+          <div style="background: rgba(255,255,255,0.15); width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+            <i class="fa fa-truck text-warning"></i>
+          </div>
+          <div>
+            <h5 class="modal-title fw-bold mb-0" id="outModalTitle" style="font-size: 1.05rem;"><i class="fa fa-truck me-2"></i>New Raw Material Out (Delivery Challan)</h5>
+            <small class="text-white-50" id="outModalSub" style="font-size: .75rem;">Issue raw materials to production/kitchen with cost tracking. Press <strong>Enter</strong> for next row.</small>
+          </div>
+        </div>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <form action="{{ route('raw_materials.out.store') }}" method="POST" id="outForm">
         @csrf
-        <div class="modal-body">
+        <input type="hidden" name="id" id="out_id">
+        <div class="modal-body p-3">
           <div class="row g-3 mb-3">
             <div class="col-md-4">
               <label class="rm-lbl">Location / Department <span class="text-danger">*</span></label>
-              <input type="text" name="location" list="locationSuggestions" class="rm-fld" placeholder="e.g. Kitchen, Bakery" required>
+              <input type="text" name="location" id="out_location" list="locationSuggestions" class="rm-fld" placeholder="e.g. Kitchen, Bakery" required autocomplete="off">
               <datalist id="locationSuggestions">
-                <option value="Kitchen">
-                <option value="Bakery Section">
-                <option value="Sweet Factory">
-                <option value="Packaging Unit">
-                <option value="Main Counter">
+                <option value="Kitchen (Mithai Section)">
+                <option value="Bakery & Cakes Section">
+                <option value="Sweet Factory (Main)">
+                <option value="Nimko / Snacks Unit">
+                <option value="Packaging & Box Unit">
+                <option value="Main Counter / Retail Display">
               </datalist>
             </div>
             <div class="col-md-4">
               <label class="rm-lbl">Taken By (Person Name) <span class="text-danger">*</span></label>
-              <input type="text" name="taken_by" class="rm-fld" placeholder="e.g. Chef Aslam, Ali Staff" required>
+              <input type="text" name="taken_by" id="out_taken_by" class="rm-fld" placeholder="e.g. Chef Aslam, Master Zubair, Ali Staff" required autocomplete="off">
             </div>
             <div class="col-md-4">
               <label class="rm-lbl">Issue Date <span class="text-danger">*</span></label>
-              <input type="date" name="out_date" class="rm-fld" value="{{ date('Y-m-d') }}" required>
+              <input type="date" name="out_date" id="out_date" class="rm-fld" value="{{ date('Y-m-d') }}" required>
             </div>
             <div class="col-md-12">
-              <label class="rm-lbl">Notes / Remarks (Optional)</label>
-              <input type="text" name="notes" class="rm-fld" placeholder="e.g. Issued for Gulab Jamun & Barfi Batch">
+              <label class="rm-lbl">Notes / Purpose (Optional)</label>
+              <input type="text" name="notes" id="out_notes" class="rm-fld" placeholder="e.g. Issued for Gulab Jamun & Barfi Batch 4">
             </div>
           </div>
 
           <!-- DYNAMIC OUT ITEMS TABLE -->
           <div class="d-flex justify-content-between align-items-center mb-2">
             <h6 class="fw-bold mb-0 text-dark"><i class="fa fa-list me-1 text-primary"></i>Raw Material Items to Issue Out</h6>
-            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addOutRow()">
-              <i class="fa fa-plus me-1"></i> Add Material Row
+            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="addOutRow()">
+              <i class="fa fa-plus me-1"></i> Add Material Row (or press Enter)
             </button>
           </div>
 
-          <div class="table-responsive border rounded mb-3">
-            <table class="table table-bordered align-middle mb-0" style="font-size: 0.85rem;">
-              <thead class="table-light">
+          <div class="table-responsive border rounded mb-3" style="max-height: 380px; overflow-y: auto;">
+            <table class="table table-bordered table-hover align-middle mb-0" id="outItemsTable" style="font-size: 0.84rem;">
+              <thead class="table-light sticky-top text-muted" style="z-index: 2; font-size: 0.75rem; text-transform: uppercase;">
                 <tr>
-                  <th style="width: 40%;">Raw Material Item <span class="text-danger">*</span></th>
-                  <th style="width: 25%;">Qty Issued <span class="text-danger">*</span></th>
-                  <th style="width: 25%;">Purpose / Note</th>
-                  <th class="text-center" style="width: 10%;">Action</th>
+                  <th style="width: 35px;" class="text-center">#</th>
+                  <th style="min-width: 250px;">Raw Material Item <span class="text-danger">*</span></th>
+                  <th style="min-width: 95px;" class="text-center">Stock</th>
+                  <th style="min-width: 140px;">Qty Issued <span class="text-danger">*</span></th>
+                  <th style="min-width: 120px;" class="text-end">Cost Rate (Rs)</th>
+                  <th style="min-width: 130px;" class="text-end">Total Cost (Rs)</th>
+                  <th style="min-width: 150px;">Purpose / Note</th>
+                  <th class="text-center" style="width: 80px;">Action</th>
                 </tr>
               </thead>
               <tbody id="outItemRows">
-                <tr class="out-row">
-                  <td>
-                    <select name="raw_material_id[]" class="rm-fld out-mat-select" onchange="updateOutRowUnit(this)" required>
-                      <option value="">-- Select Material --</option>
-                      @foreach($materials as $m)
-                        <option value="{{ $m->id }}" data-unit="{{ $m->unit }}" data-stock="{{ $m->stock_qty }}">{{ $m->name }} (Available: {{ number_format($m->stock_qty, 2) }} {{ $m->unit }})</option>
-                      @endforeach
-                    </select>
-                  </td>
-                  <td>
-                    <div class="input-group input-group-sm">
-                      <input type="number" step="any" name="qty[]" class="form-control rm-fld out-qty" placeholder="Qty" required>
-                      <span class="input-group-text out-unit-badge">KG</span>
-                    </div>
-                  </td>
-                  <td><input type="text" name="item_note[]" class="rm-fld" placeholder="e.g. Batch 1"></td>
-                  <td class="text-center">
-                    <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="removeOutRow(this)"><i class="fa fa-times"></i></button>
-                  </td>
-                </tr>
+                <!-- Out rows -->
               </tbody>
             </table>
           </div>
 
+          <!-- SUMMARY STRIP -->
+          <div class="row g-2 bg-light p-2 rounded border align-middle">
+            <div class="col-md-4 d-flex align-items-center">
+              <span class="text-muted small me-2">Total Items:</span>
+              <strong id="out_total_items_badge" class="badge bg-secondary">0</strong>
+            </div>
+            <div class="col-md-4 text-center">
+              <span class="text-muted small me-2">Total Qty:</span>
+              <strong id="out_total_qty_badge" class="text-dark">0.00</strong>
+            </div>
+            <div class="col-md-4 text-end">
+              <span class="text-muted small me-2">Total Out Value:</span>
+              <strong id="out_total_val_badge" class="text-primary fs-6 fw-bold">Rs 0.00</strong>
+            </div>
+          </div>
+
         </div>
-        <div class="modal-footer bg-light">
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="rm-btn rm-btn-primary rm-btn-sm"><i class="fa fa-check me-1"></i> Issue Material Out & Generate DC</button>
+        <div class="modal-footer bg-light py-2">
+          <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm px-4 fw-bold" id="outSubmitBtn"><i class="fa fa-check me-1"></i> Issue Material Out & Save DC</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- QUICK VIEW RAW MATERIAL OUT (DC) MODAL -->
+<div class="modal fade" id="outQuickViewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-dark text-white py-2 px-3">
+        <div class="d-flex align-items-center gap-2">
+          <i class="fa fa-file-text-o text-info fs-5"></i>
+          <div>
+            <h5 class="modal-title fw-bold mb-0" id="qv_issue_no" style="font-size: 1.05rem;">Delivery Challan Details</h5>
+            <small class="text-white-50" id="qv_out_date">Date</small>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3">
+        <div class="row g-2 mb-3 p-2 bg-light border rounded">
+          <div class="col-md-4">
+            <span class="text-muted small d-block">Issued To / Location:</span>
+            <strong id="qv_location" class="text-dark">-</strong>
+          </div>
+          <div class="col-md-4">
+            <span class="text-muted small d-block">Taken By (Person):</span>
+            <strong id="qv_taken_by" class="text-dark">-</strong>
+          </div>
+          <div class="col-md-4">
+            <span class="text-muted small d-block">Created By:</span>
+            <strong id="qv_created_by" class="text-dark">-</strong>
+          </div>
+          <div class="col-md-12 mt-1" id="qv_notes_wrap">
+            <span class="text-muted small d-block">Notes:</span>
+            <span id="qv_notes" class="text-secondary">-</span>
+          </div>
+        </div>
+
+        <h6 class="fw-bold text-dark mb-2"><i class="fa fa-cubes text-primary me-1"></i> Issued Items List</h6>
+        <div class="table-responsive border rounded mb-3">
+          <table class="table table-bordered table-sm mb-0 align-middle">
+            <thead class="table-light text-muted small uppercase">
+              <tr>
+                <th style="width: 35px;" class="text-center">#</th>
+                <th>Material Name</th>
+                <th class="text-center" style="width: 80px;">Unit</th>
+                <th class="text-end" style="width: 110px;">Qty Issued</th>
+                <th class="text-end" style="width: 120px;">Cost Rate (Rs)</th>
+                <th class="text-end" style="width: 130px;">Total Value (Rs)</th>
+                <th style="width: 140px;">Purpose / Note</th>
+              </tr>
+            </thead>
+            <tbody id="qv_items_body">
+              <!-- Rendered via JS -->
+            </tbody>
+            <tfoot class="table-light fw-bold">
+              <tr>
+                <td colspan="3" class="text-end">Grand Total:</td>
+                <td class="text-end" id="qv_foot_qty">0.00</td>
+                <td></td>
+                <td class="text-end text-primary" id="qv_foot_amount">Rs 0.00</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer bg-light py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <a href="#" id="qv_print_link" class="btn btn-dark btn-sm fw-bold px-3" target="_blank"><i class="bi bi-printer me-1"></i> Print Delivery Challan</a>
+      </div>
     </div>
   </div>
 </div>
@@ -1405,6 +1571,95 @@ $(document).ready(function() {
     calcPurchaseTotals();
   });
 
+  // Material Out (DC) edit modal populate
+  $(document).on('click', '.btn-edit-out', function() {
+    const data = $(this).data('out');
+    if (!data) return;
+
+    $('#out_id').val(data.id);
+    $('#outModalTitle').html('<i class="fa fa-pencil me-2"></i>Edit Delivery Challan #' + (data.issue_no || ''));
+    $('#out_location').val(data.location || '');
+    $('#out_taken_by').val(data.taken_by || '');
+    $('#out_date').val(data.out_date || '');
+    $('#out_notes').val(data.notes || '');
+    $('#outSubmitBtn').html('<i class="fa fa-save me-1"></i> Update Delivery Challan');
+
+    let rowsHtml = '';
+    if (data.items && data.items.length > 0) {
+      data.items.forEach(function(item, idx) {
+        rowsHtml += getOutRowHtml(idx + 1, item.raw_material_id, item.qty, item.unit_price, item.item_note);
+      });
+    }
+
+    if (rowsHtml) {
+      $('#outItemRows').html(rowsHtml);
+    } else {
+      $('#outItemRows').html(getOutRowHtml(1));
+    }
+    calcOutTotals();
+    new bootstrap.Modal(document.getElementById('outModal')).show();
+  });
+
+  // Material Out Quick View Modal
+  $(document).on('click', '.btn-quick-view-out', function() {
+    const data = $(this).data('out');
+    if (!data) return;
+
+    $('#qv_issue_no').html('<i class="fa fa-truck text-warning me-2"></i>DC: ' + (data.issue_no || '-'));
+    $('#qv_out_date').text('Date: ' + (data.out_date || '-'));
+    $('#qv_location').text(data.location || '-');
+    $('#qv_taken_by').text(data.taken_by || '-');
+    $('#qv_created_by').text(data.created_by || 'Admin');
+    $('#qv_notes').text(data.notes || 'None');
+
+    let itemsHtml = '';
+    let totalQty = 0;
+    let totalAmt = 0;
+
+    if (data.items && data.items.length > 0) {
+      data.items.forEach(function(it, idx) {
+        totalQty += parseFloat(it.qty || 0);
+        totalAmt += parseFloat(it.line_total || 0);
+        itemsHtml += `
+          <tr>
+            <td class="text-center text-muted fw-bold">${idx + 1}</td>
+            <td><strong class="text-dark">${it.name}</strong></td>
+            <td class="text-center"><span class="badge bg-light text-dark border">${it.unit}</span></td>
+            <td class="text-end fw-bold">${Number(it.qty).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td class="text-end">Rs ${Number(it.unit_price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td class="text-end fw-bold text-dark">Rs ${Number(it.line_total).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td class="text-muted small">${it.item_note || '-'}</td>
+          </tr>
+        `;
+      });
+    } else {
+      itemsHtml = '<tr><td colspan="7" class="text-center text-muted py-3">No items found</td></tr>';
+    }
+
+    $('#qv_items_body').html(itemsHtml);
+    $('#qv_foot_qty').text(totalQty.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+    $('#qv_foot_amount').text('Rs ' + totalAmt.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+    
+    let printUrl = "{{ url('raw-materials/out/dc') }}/" + data.id;
+    $('#qv_print_link').attr('href', printUrl);
+
+    new bootstrap.Modal(document.getElementById('outQuickViewModal')).show();
+  });
+
+  // Enter Key Navigation for Out Multi-Row Table
+  $(document).on('keydown', '#outItemRows input, #outItemRows select', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const currentTr = $(this).closest('tr');
+      const nextTr = currentTr.next('tr');
+      if (nextTr.length > 0) {
+        nextTr.find('.out-mat-select').focus();
+      } else {
+        addOutRow();
+      }
+    }
+  });
+
   // Enter Key Navigation for Raw Material Multi-Row Table
   $(document).on('keydown', '#rawMaterialRows input, #rawMaterialRows select', function(e) {
     if (e.key === 'Enter') {
@@ -1631,78 +1886,163 @@ function calcPurchaseTotals() {
   $('#pur_due').val(due.toFixed(2));
 }
 
-function clearOutForm() {
-  $('#outForm')[0].reset();
-  $('#outItemRows').html(`
+/* ══════════ MULTI-ROW RAW MATERIAL OUT (DC) LOGIC ══════════ */
+function getOutRowHtml(num, selectedId, qty, price, note) {
+  num = num || 1;
+  selectedId = selectedId || '';
+  qty = (qty !== undefined && qty !== null && qty !== '') ? qty : '';
+  note = note || '';
+
+  let optHtml = '<option value="">-- Select Material --</option>';
+  let curUnit = 'KG';
+  let curStock = 0;
+  let curPrice = price !== undefined ? price : 0;
+
+  @foreach($materials as $m)
+    var isSel = (selectedId == {{ $m->id }}) ? 'selected' : '';
+    if (selectedId == {{ $m->id }}) {
+      curUnit = "{{ $m->unit }}";
+      curStock = {{ (float)$m->stock_qty }};
+      if (!curPrice) curPrice = {{ (float)$m->unit_price }};
+    }
+    optHtml += `<option value="{{ $m->id }}" data-unit="{{ $m->unit }}" data-stock="{{ (float)$m->stock_qty }}" data-price="{{ (float)$m->unit_price }}" ${isSel}>{{ $m->name }} (Available: {{ number_format($m->stock_qty, 2) }} {{ $m->unit }})</option>`;
+  @endforeach
+
+  const lineTotal = (parseFloat(qty || 0) * parseFloat(curPrice || 0)).toFixed(2);
+
+  return `
     <tr class="out-row">
+      <td class="text-center text-muted fw-bold out-row-num">${num}</td>
       <td>
-        <select name="raw_material_id[]" class="rm-fld out-mat-select" onchange="updateOutRowUnit(this)" required style="width:100%;">
-          <option value="">-- Select Material --</option>
-          @foreach($materials as $m)
-            <option value="{{ $m->id }}" data-unit="{{ $m->unit }}" data-stock="{{ $m->stock_qty }}">{{ $m->name }} (Available: {{ number_format($m->stock_qty, 2) }} {{ $m->unit }})</option>
-          @endforeach
+        <select name="raw_material_id[]" class="form-select form-select-sm out-mat-select" onchange="updateOutRowUnit(this)" required>
+          ${optHtml}
         </select>
+      </td>
+      <td class="text-center">
+        <span class="badge bg-secondary out-stock-badge">${Number(curStock).toFixed(2)} ${curUnit}</span>
       </td>
       <td>
         <div class="input-group input-group-sm">
-          <input type="number" step="any" name="qty[]" class="form-control rm-fld out-qty" placeholder="Qty" required>
-          <span class="input-group-text out-unit-badge">KG</span>
+          <input type="number" step="any" min="0.001" name="qty[]" class="form-control form-control-sm out-qty fw-bold" placeholder="Qty" value="${qty}" oninput="calcOutTotals()" required autocomplete="off">
+          <span class="input-group-text out-unit-badge py-0 px-2" style="font-size: 0.75rem;">${curUnit}</span>
         </div>
       </td>
-      <td><input type="text" name="item_note[]" class="rm-fld" placeholder="e.g. Batch 1"></td>
+      <td>
+        <input type="number" step="any" min="0" name="unit_price[]" class="form-control form-control-sm text-end out-price" placeholder="Cost" value="${curPrice}" oninput="calcOutTotals()" autocomplete="off">
+      </td>
+      <td>
+        <input type="number" step="any" class="form-control form-control-sm text-end out-total bg-light fw-bold" readonly value="${lineTotal}">
+      </td>
+      <td>
+        <input type="text" name="item_note[]" class="form-control form-control-sm out-item-note" placeholder="e.g. Batch 1" value="${note}" autocomplete="off">
+      </td>
       <td class="text-center">
-        <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="removeOutRow(this)"><i class="fa fa-times"></i></button>
+        <div class="btn-group btn-group-sm" role="group">
+          <button type="button" class="btn btn-outline-success py-1 px-2 btn-add-out-row" title="Add Row Below" onclick="addOutRowAfter(this)">
+            <i class="bi bi-plus-lg"></i>
+          </button>
+          <button type="button" class="btn btn-outline-danger py-1 px-2 btn-remove-out-row" title="Remove Row" onclick="removeOutRow(this)">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
       </td>
     </tr>
-  `);
-  $('#outItemRows .out-mat-select').select2({
-    dropdownParent: $('#outModal'),
-    width: '100%'
+  `;
+}
+
+function reindexOutRows() {
+  $('#outItemRows tr').each(function(index) {
+    $(this).find('.out-row-num').text(index + 1);
   });
 }
 
 function addOutRow() {
-  const rowHtml = `
-    <tr class="out-row">
-      <td>
-        <select name="raw_material_id[]" class="rm-fld out-mat-select" onchange="updateOutRowUnit(this)" required style="width:100%;">
-          <option value="">-- Select Material --</option>
-          @foreach($materials as $m)
-            <option value="{{ $m->id }}" data-unit="{{ $m->unit }}" data-stock="{{ $m->stock_qty }}">{{ $m->name }} (Available: {{ number_format($m->stock_qty, 2) }} {{ $m->unit }})</option>
-          @endforeach
-        </select>
-      </td>
-      <td>
-        <div class="input-group input-group-sm">
-          <input type="number" step="any" name="qty[]" class="form-control rm-fld out-qty" placeholder="Qty" required>
-          <span class="input-group-text out-unit-badge">KG</span>
-        </div>
-      </td>
-      <td><input type="text" name="item_note[]" class="rm-fld" placeholder="e.g. Batch 1"></td>
-      <td class="text-center">
-        <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="removeOutRow(this)"><i class="fa fa-times"></i></button>
-      </td>
-    </tr>
-  `;
-  const $newRow = $(rowHtml);
-  $('#outItemRows').append($newRow);
-  $newRow.find('.out-mat-select').select2({
-    dropdownParent: $('#outModal'),
-    width: '100%'
-  });
+  const count = $('#outItemRows tr').length;
+  const newRow = $(getOutRowHtml(count + 1));
+  $('#outItemRows').append(newRow);
+  reindexOutRows();
+  newRow.find('.out-mat-select').focus();
+}
+
+function addOutRowAfter(btn) {
+  const currentTr = $(btn).closest('tr');
+  const newRow = $(getOutRowHtml(1));
+  currentTr.after(newRow);
+  reindexOutRows();
+  newRow.find('.out-mat-select').focus();
 }
 
 function removeOutRow(btn) {
-  if ($('#outItemRows tr').length > 1) {
+  const rows = $('#outItemRows tr');
+  if (rows.length > 1) {
     $(btn).closest('tr').remove();
+    reindexOutRows();
+    calcOutTotals();
+  } else {
+    // If only 1 row remains, reset it
+    const tr = $(btn).closest('tr');
+    tr.find('.out-mat-select').val('');
+    tr.find('.out-stock-badge').text('0.00 KG');
+    tr.find('.out-unit-badge').text('KG');
+    tr.find('.out-qty').val('');
+    tr.find('.out-price').val('0');
+    tr.find('.out-total').val('0.00');
+    tr.find('.out-item-note').val('');
+    calcOutTotals();
+    tr.find('.out-mat-select').focus();
   }
 }
 
 function updateOutRowUnit(selectEl) {
   const selectedOpt = $(selectEl).find(':selected');
   const unit = selectedOpt.data('unit') || 'KG';
+  const stock = parseFloat(selectedOpt.data('stock')) || 0;
+  const defaultPrice = parseFloat(selectedOpt.data('price')) || 0;
   const row = $(selectEl).closest('tr');
+
   row.find('.out-unit-badge').text(unit);
+  row.find('.out-stock-badge').text(stock.toFixed(2) + ' ' + unit);
+
+  if (defaultPrice > 0 && (!row.find('.out-price').val() || row.find('.out-price').val() == '0')) {
+    row.find('.out-price').val(defaultPrice);
+  }
+
+  calcOutTotals();
+}
+
+function calcOutTotals() {
+  let totalQty = 0;
+  let totalVal = 0;
+  let count = 0;
+
+  $('.out-row').each(function() {
+    const qty = parseFloat($(this).find('.out-qty').val()) || 0;
+    const price = parseFloat($(this).find('.out-price').val()) || 0;
+    const lineTotal = qty * price;
+    $(this).find('.out-total').val(lineTotal.toFixed(2));
+
+    if (qty > 0 || $(this).find('.out-mat-select').val()) {
+      count++;
+    }
+    totalQty += qty;
+    totalVal += lineTotal;
+  });
+
+  $('#out_total_items_badge').text(count);
+  $('#out_total_qty_badge').text(totalQty.toFixed(2));
+  $('#out_total_val_badge').text('Rs ' + totalVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+}
+
+function clearOutForm() {
+  $('#out_id').val('');
+  $('#outForm')[0].reset();
+  $('#outModalTitle').html('<i class="fa fa-truck me-2"></i>New Raw Material Out (Delivery Challan)');
+  $('#outSubmitBtn').html('<i class="fa fa-check me-1"></i> Issue Material Out & Save DC');
+  $('#outItemRows').html(getOutRowHtml(1) + getOutRowHtml(2));
+  calcOutTotals();
+  setTimeout(function() {
+    $('#out_location').focus();
+  }, 350);
 }
 
 function filterStockTable() {
@@ -1784,13 +2124,6 @@ $(document).ready(function() {
   $('#purchaseModal').on('shown.bs.modal', function () {
     $(this).find('.mat-select').select2({
       dropdownParent: $('#purchaseModal'),
-      width: '100%'
-    });
-  });
-
-  $('#outModal').on('shown.bs.modal', function () {
-    $(this).find('.out-mat-select').select2({
-      dropdownParent: $('#outModal'),
       width: '100%'
     });
   });

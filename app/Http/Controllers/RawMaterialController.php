@@ -776,30 +776,59 @@ class RawMaterialController extends Controller
     public function storeOut(Request $request)
     {
         $request->validate([
+            'id'              => 'nullable|exists:raw_material_outs,id',
             'out_date'        => 'required|date',
             'location'        => 'required|string|max:255',
             'taken_by'        => 'required|string|max:255',
             'raw_material_id' => 'required|array|min:1',
             'raw_material_id.*' => 'required|exists:raw_materials,id',
-            'qty'            => 'required|array|min:1',
-            'qty.*'          => 'required|numeric|gt:0',
-            'item_note'      => 'nullable|array',
-            'notes'          => 'nullable|string',
+            'qty'             => 'required|array|min:1',
+            'qty.*'           => 'required|numeric|gt:0',
+            'unit_price'      => 'nullable|array',
+            'item_note'       => 'nullable|array',
+            'notes'           => 'nullable|string',
         ]);
 
         try {
             DB::beginTransaction();
 
-            $issueNo = RawMaterialOut::generateIssueNo();
+            if ($request->filled('id')) {
+                // Edit existing DC
+                $out = RawMaterialOut::with('items')->findOrFail($request->id);
 
-            $out = RawMaterialOut::create([
-                'issue_no'   => $issueNo,
-                'out_date'   => $request->out_date,
-                'location'   => $request->location,
-                'taken_by'   => $request->taken_by,
-                'notes'      => $request->notes,
-                'created_by' => Auth::id(),
-            ]);
+                // 1. Revert Old Stock
+                foreach ($out->items as $oldItem) {
+                    $oldMat = RawMaterial::find($oldItem->raw_material_id);
+                    if ($oldMat) {
+                        $oldMat->stock_qty += $oldItem->qty;
+                        $oldMat->save();
+                    }
+                }
+
+                // 2. Delete old items
+                $out->items()->delete();
+
+                // 3. Update core fields
+                $out->out_date = $request->out_date;
+                $out->location = $request->location;
+                $out->taken_by = $request->taken_by;
+                $out->notes = $request->notes;
+                $out->save();
+
+                $issueNo = $out->issue_no;
+            } else {
+                $issueNo = RawMaterialOut::generateIssueNo();
+                $out = RawMaterialOut::create([
+                    'issue_no'   => $issueNo,
+                    'out_date'   => $request->out_date,
+                    'location'   => $request->location,
+                    'taken_by'   => $request->taken_by,
+                    'notes'      => $request->notes,
+                    'created_by' => Auth::id(),
+                ]);
+            }
+
+            $totalAmount = 0;
 
             foreach ($request->raw_material_id as $index => $matId) {
                 $qty = (float)$request->qty[$index];
@@ -807,11 +836,20 @@ class RawMaterialController extends Controller
 
                 $material = RawMaterial::findOrFail($matId);
 
+                $price = isset($request->unit_price[$index]) && is_numeric($request->unit_price[$index]) && $request->unit_price[$index] > 0
+                    ? (float)$request->unit_price[$index]
+                    : (float)$material->unit_price;
+
+                $lineTotal = $qty * $price;
+                $totalAmount += $lineTotal;
+
                 RawMaterialOutItem::create([
                     'raw_material_out_id' => $out->id,
                     'raw_material_id'     => $matId,
                     'unit'                => $material->unit,
                     'qty'                 => $qty,
+                    'unit_price'          => $price,
+                    'line_total'          => $lineTotal,
                     'item_note'           => $itemNote,
                 ]);
 
@@ -820,8 +858,14 @@ class RawMaterialController extends Controller
                 $material->save();
             }
 
+            $out->total_amount = $totalAmount;
+            $out->save();
+
             DB::commit();
-            return redirect()->route('raw_materials.index', ['tab' => 'out'])->with('success', 'Raw material issued out successfully! DC #: ' . $issueNo);
+            $msg = $request->filled('id')
+                ? 'Material Out DC #' . $issueNo . ' updated successfully!'
+                : 'Raw material issued out successfully! DC #: ' . $issueNo;
+            return redirect()->route('raw_materials.index', ['tab' => 'out'])->with('success', $msg);
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->withErrors('Error issuing raw material out: ' . $e->getMessage())->withInput();

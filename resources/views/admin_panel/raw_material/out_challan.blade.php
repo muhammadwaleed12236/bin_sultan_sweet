@@ -143,24 +143,34 @@
     <table>
         <thead>
             <tr>
-                <th style="width:12%; text-align:left;">#</th>
-                <th style="width:58%; text-align:left;">MATERIAL ITEM</th>
-                <th style="width:30%; text-align:right;">QTY</th>
+                <th style="width:10%; text-align:left;">#</th>
+                <th style="width:46%; text-align:left;">MATERIAL ITEM</th>
+                <th style="width:20%; text-align:right;">QTY</th>
+                <th style="width:24%; text-align:right;">TOTAL (RS)</th>
             </tr>
         </thead>
         <tbody>
+            @php $printTotal = 0; @endphp
             @foreach($out->items as $index => $item)
+            @php
+                $p = (float)($item->unit_price ?: ($item->rawMaterial?->unit_price ?? 0));
+                $line = (float)($item->line_total ?: ($item->qty * $p));
+                $printTotal += $line;
+            @endphp
             <tr>
                 <td style="text-align:left;">{{ $index + 1 }}</td>
                 <td style="text-align:left;">
                     <div class="item-name">{{ $item->rawMaterial->name ?? 'Material' }}</div>
-                    <div class="item-code">[{{ $item->rawMaterial->item_code ?? 'RM-'.str_pad($item->raw_material_id, 3, '0', STR_PAD_LEFT) }}]</div>
+                    <div class="item-code">[{{ $item->rawMaterial->item_code ?? 'RM-'.str_pad($item->raw_material_id, 3, '0', STR_PAD_LEFT) }}] @if($p > 0) @ Rs {{ number_format($p, 0) }} @endif</div>
                     @if($item->item_note)
                         <div style="font-size:8.5px; font-weight:900;">Note: {{ $item->item_note }}</div>
                     @endif
                 </td>
-                <td class="r" style="font-size:13px; font-weight:900; vertical-align:top; text-align:right;">
-                    {{ number_format($item->qty, ($item->qty == floor($item->qty) ? 0 : 2)) }} {{ $item->unit }}
+                <td class="r" style="font-size:11.5px; font-weight:900; vertical-align:top; text-align:right;">
+                    {{ number_format($item->qty, ($item->qty == floor($item->qty) ? 0 : 2)) }}<br><small style="font-size:9px;">{{ $item->unit }}</small>
+                </td>
+                <td class="r" style="font-size:11.5px; font-weight:900; vertical-align:top; text-align:right;">
+                    Rs {{ number_format($line, 2) }}
                 </td>
             </tr>
             @endforeach
@@ -171,6 +181,10 @@
     <div class="info-row" style="font-size:11px;">
         <span>TOTAL ITEMS:</span>
         <span>{{ $out->items->count() }} Item(s)</span>
+    </div>
+    <div class="info-row" style="font-size:12px; font-weight:900;">
+        <span>TOTAL VALUE:</span>
+        <span>Rs {{ number_format($out->total_amount ?: $printTotal, 2) }}</span>
     </div>
 
     @if($out->notes)
