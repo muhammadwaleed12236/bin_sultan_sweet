@@ -252,8 +252,93 @@ class RawMaterialController extends Controller
 
     public function storeMaterial(Request $request)
     {
+        // Single Edit Mode
+        if ($request->filled('id')) {
+            $name = $request->input('single_name') ?: $request->input('name');
+            $unit = $request->input('single_unit') ?: $request->input('unit');
+            $stock = $request->input('single_stock_qty') !== null ? $request->input('single_stock_qty') : $request->input('stock_qty');
+            $price = $request->input('single_unit_price') !== null ? $request->input('single_unit_price') : $request->input('unit_price');
+            $alert = $request->input('single_alert_qty') !== null ? $request->input('single_alert_qty') : $request->input('alert_qty');
+            $note = $request->input('single_note') ?: $request->input('note');
+
+            if (empty($name)) {
+                return back()->with('error', 'Material name is required.');
+            }
+
+            $material = RawMaterial::findOrFail($request->id);
+            $material->update([
+                'name'        => trim($name),
+                'unit'        => trim($unit) ?: 'KG',
+                'stock_qty'   => floatval($stock ?? 0),
+                'unit_price'  => floatval($price ?? 0),
+                'alert_qty'   => floatval($alert ?? 10),
+                'note'        => !empty($note) ? trim($note) : null,
+            ]);
+
+            if (empty($material->item_code)) {
+                $material->item_code = 'RM-' . str_pad($material->id, 4, '0', STR_PAD_LEFT);
+                $material->save();
+            }
+
+            return redirect()->route('raw_materials.index', ['tab' => 'materials'])->with('success', 'Raw material updated successfully!');
+        }
+
+        // Bulk / Multi-row Create Mode
+        $names = $request->input('name');
+        if (is_array($names)) {
+            $units  = $request->input('unit', []);
+            $stocks = $request->input('stock_qty', []);
+            $prices = $request->input('unit_price', []);
+            $alerts = $request->input('alert_qty', []);
+            $notes  = $request->input('note', []);
+
+            $createdCount = 0;
+            DB::beginTransaction();
+            try {
+                foreach ($names as $i => $rawName) {
+                    $name = trim((string)$rawName);
+                    if ($name === '') {
+                        continue;
+                    }
+
+                    $unit  = trim((string)($units[$i] ?? 'KG')) ?: 'KG';
+                    $stock = floatval($stocks[$i] ?? 0);
+                    $price = floatval($prices[$i] ?? 0);
+                    $alert = isset($alerts[$i]) && is_numeric($alerts[$i]) ? floatval($alerts[$i]) : 10;
+                    $note  = !empty($notes[$i]) ? trim((string)$notes[$i]) : null;
+
+                    $mat = RawMaterial::create([
+                        'name'       => $name,
+                        'unit'       => $unit,
+                        'stock_qty'  => $stock,
+                        'unit_price' => $price,
+                        'alert_qty'  => $alert,
+                        'note'       => $note,
+                    ]);
+
+                    $mat->item_code = 'RM-' . str_pad($mat->id, 4, '0', STR_PAD_LEFT);
+                    $mat->save();
+                    $createdCount++;
+                }
+
+                if ($createdCount === 0) {
+                    DB::rollBack();
+                    return back()->with('error', 'Please enter at least one valid raw material name.');
+                }
+
+                DB::commit();
+                $msg = $createdCount > 1 
+                    ? "{$createdCount} raw materials added successfully!" 
+                    : "Raw material added successfully!";
+                return redirect()->route('raw_materials.index', ['tab' => 'materials'])->with('success', $msg);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return back()->with('error', 'Error creating raw materials: ' . $e->getMessage());
+            }
+        }
+
+        // Fallback single create (if non-array name is submitted)
         $validated = $request->validate([
-            'id'          => 'nullable|exists:raw_materials,id',
             'name'        => 'required|string|max:255',
             'unit'        => 'required|string|max:50',
             'unit_price'  => 'nullable|numeric|min:0',
@@ -262,22 +347,18 @@ class RawMaterialController extends Controller
             'note'        => 'nullable|string',
         ]);
 
-        if ($request->id) {
-            $material = RawMaterial::findOrFail($request->id);
-            $material->update($validated);
-            if (empty($material->item_code)) {
-                $material->item_code = 'RM-' . str_pad($material->id, 4, '0', STR_PAD_LEFT);
-                $material->save();
-            }
-            $message = 'Raw material updated successfully!';
-        } else {
-            $material = RawMaterial::create($validated);
-            $material->item_code = 'RM-' . str_pad($material->id, 4, '0', STR_PAD_LEFT);
-            $material->save();
-            $message = 'Raw material created successfully!';
-        }
+        $material = RawMaterial::create([
+            'name'        => $validated['name'],
+            'unit'        => $validated['unit'],
+            'unit_price'  => $validated['unit_price'] ?? 0,
+            'stock_qty'   => $validated['stock_qty'] ?? 0,
+            'alert_qty'   => $validated['alert_qty'] ?? 10,
+            'note'        => $validated['note'] ?? null,
+        ]);
+        $material->item_code = 'RM-' . str_pad($material->id, 4, '0', STR_PAD_LEFT);
+        $material->save();
 
-        return redirect()->route('raw_materials.index', ['tab' => 'materials'])->with('success', $message);
+        return redirect()->route('raw_materials.index', ['tab' => 'materials'])->with('success', 'Raw material created successfully!');
     }
 
     public function deleteMaterial($id)

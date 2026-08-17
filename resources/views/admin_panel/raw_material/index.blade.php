@@ -145,6 +145,20 @@
 .rm-fld { border: 1.5px solid var(--rm-border); border-radius: var(--rm-radius-sm); padding: .45rem .75rem; font-size: .84rem; font-weight: 500; color: var(--rm-text); background: var(--rm-surface); width: 100%; outline: none; transition: all .2s ease; }
 .rm-fld:focus { border-color: var(--rm-accent); box-shadow: 0 0 0 3px rgba(43,127,255,.1); }
 
+#rawMaterialTable input.form-control, #rawMaterialTable select.form-select {
+  font-size: .82rem;
+  border-color: #cbd5e1;
+  border-radius: 6px;
+  padding: .35rem .55rem;
+}
+#rawMaterialTable input.form-control:focus, #rawMaterialTable select.form-select:focus {
+  border-color: #2b7fff;
+  box-shadow: 0 0 0 2.5px rgba(43, 127, 255, 0.15);
+}
+#rawMaterialTable tbody tr:hover {
+  background-color: #f8fafc;
+}
+
 @media print {
   .no-print, .rm-hdr, .rm-nav-tabs, .rm-stat-card, .no-print * { display: none !important; }
   .rm-page { background: #fff !important; padding: 0 !important; }
@@ -809,55 +823,109 @@
 
 <!-- ================= MODALS ================= -->
 
-<!-- 1. ADD / EDIT RAW MATERIAL MODAL -->
+<!-- 1. ADD / EDIT RAW MATERIAL MODAL (LARGE / MULTI-ROW) -->
 <div class="modal fade" id="materialModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content border-0 shadow">
-      <div class="modal-header bg-dark text-white">
-        <h5 class="modal-title fw-bold" id="materialModalTitle"><i class="fa fa-cubes me-2"></i>Add Raw Material</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <form action="{{ route('raw_materials.material.store') }}" method="POST">
-        @csrf
-        <input type="hidden" name="id" id="mat_id">
-        <div class="modal-body">
-          <div class="row g-3">
-            <div class="col-md-12">
-              <label class="rm-lbl">Material Name <span class="text-danger">*</span></label>
-              <input type="text" name="name" id="mat_name" class="rm-fld" placeholder="e.g. Sugar, Flour, Ghee, Packaging Box" required>
-            </div>
-            <div class="col-md-4">
-              <label class="rm-lbl">Unit <span class="text-danger">*</span></label>
-              <select name="unit" id="mat_unit" class="rm-fld" required>
-                <option value="KG">KG</option>
-                <option value="Gram">Gram</option>
-                <option value="Ltr">Ltr</option>
-                <option value="Pc">Pc</option>
-                <option value="Bag">Bag</option>
-                <option value="Pack">Pack</option>
-              </select>
-            </div>
-            <div class="col-md-4">
-              <label class="rm-lbl">Current Stock</label>
-              <input type="number" step="any" name="stock_qty" id="mat_stock" class="rm-fld" value="0">
-            </div>
-            <div class="col-md-4">
-              <label class="rm-lbl">Unit Cost Rate (Rs)</label>
-              <input type="number" step="any" name="unit_price" id="mat_price" class="rm-fld" value="0">
-            </div>
-            <div class="col-md-6">
-              <label class="rm-lbl">Low Stock Alert Qty</label>
-              <input type="number" step="any" name="alert_qty" id="mat_alert" class="rm-fld" value="10">
-            </div>
-            <div class="col-md-6">
-              <label class="rm-lbl">Notes</label>
-              <input type="text" name="note" id="mat_note" class="rm-fld" placeholder="Optional notes">
-            </div>
+      <div class="modal-header bg-dark text-white py-2 px-3">
+        <div class="d-flex align-items-center gap-2">
+          <div style="background: rgba(255,255,255,0.15); width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+            <i class="fa fa-cubes text-info"></i>
+          </div>
+          <div>
+            <h5 class="modal-title fw-bold mb-0" id="materialModalTitle" style="font-size: 1.05rem;"><i class="fa fa-cubes me-2"></i>Add Raw Material(s)</h5>
+            <small class="text-white-50" id="materialModalSubtitle" style="font-size: 0.75rem;">Add one or multiple raw materials. Press <strong>Enter</strong> to quickly add next row.</small>
           </div>
         </div>
-        <div class="modal-footer bg-light">
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary btn-sm px-4">Save Material</button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="{{ route('raw_materials.material.store') }}" method="POST" id="materialForm">
+        @csrf
+        <input type="hidden" name="id" id="mat_id">
+        <div class="modal-body p-3">
+
+          <!-- A. MULTI-ROW BULK ADD SECTION -->
+          <div id="multiMaterialSection">
+            <div class="table-responsive" style="border: 1px solid #e2e8f0; border-radius: 8px; max-height: 480px; overflow-y: auto;">
+              <table class="table table-bordered table-hover align-middle mb-0" id="rawMaterialTable" style="font-size: 0.85rem;">
+                <thead class="table-light text-muted sticky-top" style="z-index: 2; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                  <tr>
+                    <th class="text-center" style="width: 40px;">#</th>
+                    <th style="min-width: 250px;">Material Name <span class="text-danger">*</span></th>
+                    <th style="min-width: 125px;">Unit <span class="text-danger">*</span></th>
+                    <th style="min-width: 130px;" class="text-end">Opening Stock</th>
+                    <th style="min-width: 130px;" class="text-end">Cost Rate (Rs)</th>
+                    <th style="min-width: 120px;" class="text-end">Alert Qty</th>
+                    <th style="min-width: 180px;">Notes (Optional)</th>
+                    <th class="text-center" style="width: 85px;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="rawMaterialRows">
+                  <!-- Dynamic rows rendered via JavaScript -->
+                </tbody>
+              </table>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+              <button type="button" class="btn btn-sm btn-outline-primary" onclick="addMaterialRow()" style="font-weight: 600;">
+                <i class="fa fa-plus me-1"></i> Add Another Row (or Press Enter)
+              </button>
+              <div class="text-muted small d-flex align-items-center gap-2">
+                <span class="badge bg-light text-dark border"><i class="bi bi-keyboard me-1"></i> <strong>Enter</strong> = New Row</span>
+                <span class="badge bg-light text-dark border"><i class="bi bi-plus-lg text-success me-1"></i> = Add Row Below</span>
+                <span class="badge bg-light text-dark border"><i class="bi bi-x-lg text-danger me-1"></i> = Remove</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- B. SINGLE EDIT SECTION -->
+          <div id="singleMaterialSection" style="display: none;">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="rm-lbl">Material Name <span class="text-danger">*</span></label>
+                <input type="text" name="single_name" id="mat_name" class="rm-fld" placeholder="e.g. Sugar, Flour, Ghee, Packaging Box">
+              </div>
+              <div class="col-md-3">
+                <label class="rm-lbl">Unit <span class="text-danger">*</span></label>
+                <select name="single_unit" id="mat_unit" class="rm-fld">
+                  <option value="KG">KG</option>
+                  <option value="Gram">Gram</option>
+                  <option value="Ltr">Ltr</option>
+                  <option value="Pc">Pc</option>
+                  <option value="Bag">Bag</option>
+                  <option value="Pack">Pack</option>
+                  <option value="Dozen">Dozen</option>
+                  <option value="Box">Box</option>
+                  <option value="Pound">Pound</option>
+                  <option value="Tin">Tin</option>
+                  <option value="Carton">Carton</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="rm-lbl">Current Stock</label>
+                <input type="number" step="any" name="single_stock_qty" id="mat_stock" class="rm-fld" value="0">
+              </div>
+              <div class="col-md-4">
+                <label class="rm-lbl">Unit Cost Rate (Rs)</label>
+                <input type="number" step="any" name="single_unit_price" id="mat_price" class="rm-fld" value="0">
+              </div>
+              <div class="col-md-4">
+                <label class="rm-lbl">Low Stock Alert Qty</label>
+                <input type="number" step="any" name="single_alert_qty" id="mat_alert" class="rm-fld" value="10">
+              </div>
+              <div class="col-md-4">
+                <label class="rm-lbl">Notes</label>
+                <input type="text" name="single_note" id="mat_note" class="rm-fld" placeholder="Optional notes">
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer bg-light py-2">
+          <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm px-4 fw-bold" id="materialSubmitBtn">
+            <i class="fa fa-save me-1"></i> Save Material(s)
+          </button>
         </div>
       </form>
     </div>
@@ -1206,15 +1274,23 @@ $(document).ready(function() {
   // Material edit modal populate
   $(document).on('click', '.btn-edit-material', function() {
     $('#mat_id').val($(this).data('id'));
-    $('#mat_code').val($(this).data('code'));
     $('#mat_name').val($(this).data('name'));
     $('#mat_unit').val($(this).data('unit'));
     $('#mat_price').val($(this).data('price'));
     $('#mat_stock').val($(this).data('stock'));
     $('#mat_alert').val($(this).data('alert'));
     $('#mat_note').val($(this).data('note'));
+
     $('#materialModalTitle').html('<i class="fa fa-pencil me-2"></i>Edit Raw Material');
+    $('#materialModalSubtitle').hide();
+    $('#multiMaterialSection').hide();
+    $('#singleMaterialSection').show();
+    $('#materialSubmitBtn').html('<i class="fa fa-save me-1"></i> Update Material');
+
     new bootstrap.Modal(document.getElementById('materialModal')).show();
+    setTimeout(function() {
+      $('#mat_name').focus();
+    }, 300);
   });
 
   // Vendor edit modal populate
@@ -1233,18 +1309,131 @@ $(document).ready(function() {
   $(document).on('input', '.mat-qty, .mat-price', function() {
     calcPurchaseTotals();
   });
+
+  // Enter Key Navigation for Raw Material Multi-Row Table
+  $(document).on('keydown', '#rawMaterialRows input, #rawMaterialRows select', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const currentTr = $(this).closest('tr');
+      const nextTr = currentTr.next('tr');
+      if (nextTr.length > 0) {
+        nextTr.find('.mat-row-name').focus().select();
+      } else {
+        addMaterialRow();
+      }
+    }
+  });
 });
+
+/* ══════════ MULTI-ROW RAW MATERIAL LOGIC ══════════ */
+function getMaterialRowHtml(num) {
+  num = num || 1;
+  return `
+    <tr class="mat-row">
+      <td class="text-center mat-row-num text-muted fw-bold">${num}</td>
+      <td>
+        <input type="text" name="name[]" class="form-control form-control-sm mat-row-name" placeholder="e.g. Sugar, Desi Ghee, Maida" required autocomplete="off">
+      </td>
+      <td>
+        <select name="unit[]" class="form-select form-select-sm mat-row-unit" required>
+          <option value="KG">KG</option>
+          <option value="Gram">Gram</option>
+          <option value="Ltr">Ltr</option>
+          <option value="Pc">Pc</option>
+          <option value="Bag">Bag</option>
+          <option value="Pack">Pack</option>
+          <option value="Dozen">Dozen</option>
+          <option value="Box">Box</option>
+          <option value="Pound">Pound</option>
+          <option value="Tin">Tin</option>
+          <option value="Carton">Carton</option>
+        </select>
+      </td>
+      <td>
+        <input type="number" step="any" min="0" name="stock_qty[]" class="form-control form-control-sm text-end mat-row-stock" value="0">
+      </td>
+      <td>
+        <input type="number" step="any" min="0" name="unit_price[]" class="form-control form-control-sm text-end mat-row-price" value="0">
+      </td>
+      <td>
+        <input type="number" step="any" min="0" name="alert_qty[]" class="form-control form-control-sm text-end mat-row-alert" value="10">
+      </td>
+      <td>
+        <input type="text" name="note[]" class="form-control form-control-sm mat-row-note" placeholder="Optional note">
+      </td>
+      <td class="text-center">
+        <div class="btn-group btn-group-sm" role="group">
+          <button type="button" class="btn btn-outline-success py-1 px-2 btn-add-row" title="Add Row Below" onclick="addMaterialRowAfter(this)">
+            <i class="bi bi-plus-lg"></i>
+          </button>
+          <button type="button" class="btn btn-outline-danger py-1 px-2 btn-remove-row" title="Remove Row" onclick="removeMaterialRow(this)">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </td>
+    </tr>`;
+}
+
+function reindexMaterialRows() {
+  $('#rawMaterialRows tr').each(function(index) {
+    $(this).find('.mat-row-num').text(index + 1);
+  });
+}
+
+function addMaterialRow() {
+  const count = $('#rawMaterialRows tr').length;
+  const newRow = $(getMaterialRowHtml(count + 1));
+  $('#rawMaterialRows').append(newRow);
+  reindexMaterialRows();
+  newRow.find('.mat-row-name').focus();
+}
+
+function addMaterialRowAfter(btn) {
+  const currentTr = $(btn).closest('tr');
+  const newRow = $(getMaterialRowHtml(1));
+  currentTr.after(newRow);
+  reindexMaterialRows();
+  newRow.find('.mat-row-name').focus();
+}
+
+function removeMaterialRow(btn) {
+  const rows = $('#rawMaterialRows tr');
+  if (rows.length > 1) {
+    $(btn).closest('tr').remove();
+    reindexMaterialRows();
+  } else {
+    // If 1 row remains, reset it
+    const tr = $(btn).closest('tr');
+    tr.find('.mat-row-name').val('');
+    tr.find('.mat-row-unit').val('KG');
+    tr.find('.mat-row-stock').val('0');
+    tr.find('.mat-row-price').val('0');
+    tr.find('.mat-row-alert').val('10');
+    tr.find('.mat-row-note').val('');
+    tr.find('.mat-row-name').focus();
+  }
+}
 
 function clearMaterialForm() {
   $('#mat_id').val('');
-  $('#mat_code').val('');
   $('#mat_name').val('');
   $('#mat_unit').val('KG');
   $('#mat_price').val('0');
   $('#mat_stock').val('0');
   $('#mat_alert').val('10');
   $('#mat_note').val('');
-  $('#materialModalTitle').html('<i class="fa fa-cubes me-2"></i>Add Raw Material');
+
+  $('#materialModalTitle').html('<i class="fa fa-cubes me-2"></i>Add Raw Material(s)');
+  $('#materialModalSubtitle').show();
+  $('#multiMaterialSection').show();
+  $('#singleMaterialSection').hide();
+  $('#materialSubmitBtn').html('<i class="fa fa-save me-1"></i> Save Material(s)');
+
+  // Initial 3 clean rows
+  $('#rawMaterialRows').html(getMaterialRowHtml(1) + getMaterialRowHtml(2) + getMaterialRowHtml(3));
+  setTimeout(function() {
+    $('#rawMaterialRows tr:first .mat-row-name').focus();
+  }, 350);
 }
 
 function clearVendorForm() {
