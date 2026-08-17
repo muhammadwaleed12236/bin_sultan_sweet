@@ -698,14 +698,16 @@ $(document).ready(function() {
     $('.select2-item').select2({ placeholder:'Search product…', allowClear:true, width:'100%' });
     $('.select2-var').select2({ placeholder:'Search product…', allowClear:true, width:'100%' });
 
-    // Initialize 12-hour Flatpickr Pickers
-    var todayStr = new Date().toISOString().slice(0,10);
+    // Initialize 12-hour Flatpickr Pickers with local browser date
+    var now = new Date();
+    var pad = function(n) { return n < 10 ? '0' + n : n; };
+    var todayStr = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
     
     fpStart = flatpickr("#start_datetime", {
         enableTime: true,
         dateFormat: "Y-m-d H:i:S",
         altInput: true,
-        altFormat: "d-M-Y h:i K", // 12-hour AM/PM (e.g. 17-Aug-2026 00:00 AM)
+        altFormat: "d-M-Y h:i K", // 12-hour AM/PM (e.g. 18-Aug-2026 12:00 AM)
         time_24hr: false,
         defaultDate: todayStr + " 00:00:00"
     });
@@ -714,7 +716,7 @@ $(document).ready(function() {
         enableTime: true,
         dateFormat: "Y-m-d H:i:S",
         altInput: true,
-        altFormat: "d-M-Y h:i K", // 12-hour AM/PM (e.g. 17-Aug-2026 11:59 PM)
+        altFormat: "d-M-Y h:i K", // 12-hour AM/PM (e.g. 18-Aug-2026 11:59 PM)
         time_24hr: false,
         defaultDate: todayStr + " 23:59:59"
     });
