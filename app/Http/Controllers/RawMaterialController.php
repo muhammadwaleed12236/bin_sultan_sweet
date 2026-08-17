@@ -446,42 +446,84 @@ class RawMaterialController extends Controller
     public function storePurchase(Request $request)
     {
         $request->validate([
-            'vendor_id'      => 'required|exists:raw_material_vendors,id',
-            'purchase_date'  => 'required|date',
+            'id'              => 'nullable|exists:raw_material_purchases,id',
+            'vendor_id'       => 'required|exists:raw_material_vendors,id',
+            'purchase_date'   => 'required|date',
             'raw_material_id' => 'required|array|min:1',
             'raw_material_id.*' => 'required|exists:raw_materials,id',
-            'qty'            => 'required|array|min:1',
-            'qty.*'          => 'required|numeric|gt:0',
-            'unit_price'     => 'required|array|min:1',
-            'unit_price.*'   => 'required|numeric|gte:0',
-            'discount'       => 'nullable|numeric|min:0',
-            'extra_cost'     => 'nullable|numeric|min:0',
-            'paid_amount'    => 'nullable|numeric|min:0',
-            'note'           => 'nullable|string',
+            'qty'             => 'required|array|min:1',
+            'qty.*'           => 'required|numeric|gt:0',
+            'unit_price'      => 'required|array|min:1',
+            'unit_price.*'    => 'required|numeric|gte:0',
+            'discount'        => 'nullable|numeric|min:0',
+            'extra_cost'      => 'nullable|numeric|min:0',
+            'paid_amount'     => 'nullable|numeric|min:0',
+            'note'            => 'nullable|string',
         ]);
 
         try {
             DB::beginTransaction();
 
-            $purchaseNo = RawMaterialPurchase::generatePurchaseNo();
             $discount = (float)($request->discount ?? 0);
             $extraCost = (float)($request->extra_cost ?? 0);
             $paidAmount = (float)($request->paid_amount ?? 0);
 
-            $purchase = RawMaterialPurchase::create([
-                'purchase_no'    => $purchaseNo,
-                'vendor_id'      => $request->vendor_id,
-                'purchase_date'  => $request->purchase_date,
-                'subtotal'       => 0,
-                'discount'       => $discount,
-                'extra_cost'     => $extraCost,
-                'net_amount'     => 0,
-                'paid_amount'    => $paidAmount,
-                'due_amount'     => 0,
-                'payment_status' => 'unpaid',
-                'note'           => $request->note,
-                'created_by'     => Auth::id(),
-            ]);
+            if ($request->filled('id')) {
+                // EDIT EXISTING PURCHASE
+                $purchase = RawMaterialPurchase::with('items')->findOrFail($request->id);
+                $oldVendorId = $purchase->vendor_id;
+
+                // 1. Revert Old Stock
+                foreach ($purchase->items as $oldItem) {
+                    $oldMat = RawMaterial::find($oldItem->raw_material_id);
+                    if ($oldMat) {
+                        $oldMat->stock_qty = max(0, $oldMat->stock_qty - $oldItem->qty);
+                        $oldMat->save();
+                    }
+                }
+
+                // 2. Revert Old Vendor Ledger & Balance
+                if ($oldVendorId) {
+                    $oldVendor = RawMaterialVendor::find($oldVendorId);
+                    if ($oldVendor) {
+                        $netOldChange = $purchase->net_amount - $purchase->paid_amount;
+                        $oldVendor->closing_balance -= $netOldChange;
+                        $oldVendor->save();
+                    }
+                    RawMaterialVendorLedger::where('reference_no', $purchase->purchase_no)->delete();
+                }
+
+                // 3. Delete old items
+                $purchase->items()->delete();
+
+                // 4. Update purchase core fields
+                $purchase->vendor_id = $request->vendor_id;
+                $purchase->purchase_date = $request->purchase_date;
+                $purchase->discount = $discount;
+                $purchase->extra_cost = $extraCost;
+                $purchase->paid_amount = $paidAmount;
+                $purchase->note = $request->note;
+                $purchase->save();
+
+                $purchaseNo = $purchase->purchase_no;
+            } else {
+                // CREATE NEW PURCHASE
+                $purchaseNo = RawMaterialPurchase::generatePurchaseNo();
+                $purchase = RawMaterialPurchase::create([
+                    'purchase_no'    => $purchaseNo,
+                    'vendor_id'      => $request->vendor_id,
+                    'purchase_date'  => $request->purchase_date,
+                    'subtotal'       => 0,
+                    'discount'       => $discount,
+                    'extra_cost'     => $extraCost,
+                    'net_amount'     => 0,
+                    'paid_amount'    => $paidAmount,
+                    'due_amount'     => 0,
+                    'payment_status' => 'unpaid',
+                    'note'           => $request->note,
+                    'created_by'     => Auth::id(),
+                ]);
+            }
 
             $subtotal = 0;
 
@@ -558,9 +600,15 @@ class RawMaterialController extends Controller
 
             // Sync vendor purchase invoice payment statuses
             self::syncVendorPurchasesPaymentStatus($vendor->id);
+            if (isset($oldVendorId) && $oldVendorId != $vendor->id) {
+                self::syncVendorPurchasesPaymentStatus($oldVendorId);
+            }
 
             DB::commit();
-            return redirect()->route('raw_materials.index', ['tab' => 'purchases'])->with('success', 'Raw material purchase saved successfully! Invoice #: ' . $purchaseNo);
+            $successMsg = $request->filled('id') 
+                ? 'Raw material purchase updated successfully! Invoice #: ' . $purchaseNo
+                : 'Raw material purchase saved successfully! Invoice #: ' . $purchaseNo;
+            return redirect()->route('raw_materials.index', ['tab' => 'purchases'])->with('success', $successMsg);
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->withErrors('Error saving purchase: ' . $e->getMessage())->withInput();
@@ -630,13 +678,12 @@ class RawMaterialController extends Controller
             $newBalance = $vendor->closing_balance - $amount;
 
             $refNo = 'PAY-' . date('Ymd-His');
-            $method = $validated['payment_method'] ?? 'Cash';
-            $note = $validated['note'] ? (' (' . $validated['note'] . ')') : '';
+            $note = !empty($validated['note']) ? (' (' . $validated['note'] . ')') : '';
 
             RawMaterialVendorLedger::create([
                 'vendor_id'       => $vendor->id,
                 'date'            => $validated['date'],
-                'description'     => 'Vendor Payment via ' . $method . $note,
+                'description'     => 'Vendor Payment' . $note,
                 'reference_no'    => $refNo,
                 'type'            => 'payment',
                 'credit'          => 0,
@@ -652,7 +699,7 @@ class RawMaterialController extends Controller
             self::syncVendorPurchasesPaymentStatus($vendor->id);
 
             DB::commit();
-            return redirect()->route('raw_materials.index', ['tab' => 'ledger', 'ledger_vendor_id' => $vendor->id])
+            return redirect()->route('raw_materials.index', ['tab' => 'vendors'])
                 ->with('success', 'Payment of Rs ' . number_format($amount, 2) . ' recorded successfully for vendor ' . $vendor->name);
         } catch (\Exception $e) {
             DB::rollBack();

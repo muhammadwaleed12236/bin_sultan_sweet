@@ -433,8 +433,31 @@
                   </td>
                   <td>
                     <div class="d-flex gap-1">
+                      <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 btn-edit-purchase"
+                              data-purchase="{{ json_encode([
+                                  'id' => $pur->id,
+                                  'purchase_no' => $pur->purchase_no,
+                                  'vendor_id' => $pur->vendor_id,
+                                  'purchase_date' => $pur->purchase_date,
+                                  'discount' => $pur->discount,
+                                  'extra_cost' => $pur->extra_cost,
+                                  'paid_amount' => $pur->paid_amount,
+                                  'note' => $pur->note,
+                                  'items' => $pur->items->map(function($item) {
+                                      return [
+                                          'raw_material_id' => $item->raw_material_id,
+                                          'qty' => $item->qty,
+                                          'unit_price' => $item->unit_price,
+                                          'unit' => $item->unit,
+                                          'line_total' => $item->line_total
+                                      ];
+                                  })
+                              ]) }}"
+                              title="Edit Purchase">
+                        <i class="bi bi-pencil"></i>
+                      </button>
                       <a href="{{ route('raw_materials.purchase.invoice', $pur->id) }}" class="btn btn-sm btn-outline-info py-1 px-2" title="Print Invoice">
-                        <i class="bi bi-printer"></i> Invoice
+                        <i class="bi bi-printer"></i>
                       </a>
                       <a href="{{ route('raw_materials.purchase.delete', $pur->id) }}" class="btn btn-sm btn-outline-danger py-1 px-2" onclick="return confirm('Delete this purchase and revert stock/ledger?')" title="Delete">
                         <i class="bi bi-trash"></i>
@@ -567,6 +590,13 @@
                   <td class="text-muted small">{{ Str::limit($v->address, 30) }}</td>
                   <td>
                     <div class="d-flex gap-1">
+                      <button type="button" class="btn btn-sm btn-outline-success py-1 px-2 btn-pay-vendor"
+                              data-id="{{ $v->id }}"
+                              data-name="{{ $v->name }}"
+                              data-balance="{{ $v->closing_balance }}"
+                              title="Record Payment">
+                        <i class="bi bi-cash-stack me-1"></i> Pay
+                      </button>
                       <a href="{{ route('raw_materials.index', ['tab' => 'ledger', 'ledger_vendor_id' => $v->id]) }}" class="btn btn-sm btn-outline-info py-1 px-2" title="View Ledger">
                         <i class="bi bi-journal-text me-1"></i> Ledger
                       </a>
@@ -932,21 +962,22 @@
   </div>
 </div>
 
-<!-- 2. NEW RAW MATERIAL PURCHASE MODAL -->
+<!-- 2. NEW / EDIT RAW MATERIAL PURCHASE MODAL -->
 <div class="modal fade" id="purchaseModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content border-0 shadow">
       <div class="modal-header bg-dark text-white">
-        <h5 class="modal-title fw-bold"><i class="fa fa-shopping-cart me-2"></i>New Raw Material Purchase</h5>
+        <h5 class="modal-title fw-bold" id="purchaseModalTitle"><i class="fa fa-shopping-cart me-2"></i>New Raw Material Purchase</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <form action="{{ route('raw_materials.purchase.store') }}" method="POST" id="purchaseForm">
         @csrf
+        <input type="hidden" name="id" id="pur_id">
         <div class="modal-body">
           <div class="row g-3 mb-3">
             <div class="col-md-6">
               <label class="rm-lbl">Vendor <span class="text-danger">*</span></label>
-              <select name="vendor_id" class="rm-fld" required>
+              <select name="vendor_id" id="pur_vendor_id" class="rm-fld" required>
                 <option value="">-- Select Material Vendor --</option>
                 @foreach($vendors as $v)
                   <option value="{{ $v->id }}">{{ $v->name }} (Balance: Rs {{ number_format($v->closing_balance, 0) }})</option>
@@ -955,7 +986,7 @@
             </div>
             <div class="col-md-6">
               <label class="rm-lbl">Purchase Date <span class="text-danger">*</span></label>
-              <input type="date" name="purchase_date" value="{{ date('Y-m-d') }}" class="rm-fld" required>
+              <input type="date" name="purchase_date" id="pur_date" value="{{ date('Y-m-d') }}" class="rm-fld" required>
             </div>
           </div>
 
@@ -1035,14 +1066,14 @@
             </div>
             <div class="col-md-4">
               <label class="rm-lbl">Note / Remarks</label>
-              <input type="text" name="note" class="rm-fld" placeholder="Optional reference or vehicle #">
+              <input type="text" name="note" id="pur_note" class="rm-fld" placeholder="Optional reference or vehicle #">
             </div>
           </div>
 
         </div>
         <div class="modal-footer bg-light">
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-          <button type="submit" class="btn btn-success btn-sm px-4"><i class="fa fa-check-circle me-1"></i> Save Purchase Order</button>
+          <button type="submit" class="btn btn-success btn-sm px-4 fw-bold" id="purchaseSubmitBtn"><i class="fa fa-check-circle me-1"></i> Save Purchase Order</button>
         </div>
       </form>
     </div>
@@ -1188,49 +1219,46 @@
 <div class="modal fade" id="vendorPaymentModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 shadow">
-      <div class="modal-header bg-success text-white">
-        <h5 class="modal-title fw-bold"><i class="fa fa-money me-2"></i>Record Vendor Payment</h5>
+      <div class="modal-header bg-success text-white py-2 px-3">
+        <div class="d-flex align-items-center gap-2">
+          <i class="fa fa-money fs-5"></i>
+          <div>
+            <h5 class="modal-title fw-bold mb-0" id="vendorPaymentModalTitle" style="font-size: 1.05rem;">Record Vendor Payment</h5>
+            <small class="text-white-50" id="vendorPaymentModalSub" style="font-size: .75rem;">Pay vendor and adjust closing balance</small>
+          </div>
+        </div>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-      <form action="{{ route('raw_materials.vendor_payment.store') }}" method="POST">
+      <form action="{{ route('raw_materials.vendor_payment.store') }}" method="POST" id="vendorPaymentForm">
         @csrf
-        <div class="modal-body">
+        <div class="modal-body p-3">
           <div class="mb-3">
             <label class="rm-lbl">Select Vendor <span class="text-danger">*</span></label>
-            <select name="vendor_id" class="rm-fld" required>
+            <select name="vendor_id" id="pay_vendor_id" class="rm-fld" required>
               <option value="">-- Select Vendor --</option>
               @foreach($vendors as $v)
-                <option value="{{ $v->id }}">{{ $v->name }} (Payable Balance: Rs {{ number_format($v->closing_balance, 2) }})</option>
+                <option value="{{ $v->id }}">{{ $v->name }} (Payable: Rs {{ number_format($v->closing_balance, 2) }})</option>
               @endforeach
             </select>
           </div>
           <div class="row g-3 mb-3">
             <div class="col-md-6">
               <label class="rm-lbl">Payment Date <span class="text-danger">*</span></label>
-              <input type="date" name="date" value="{{ date('Y-m-d') }}" class="rm-fld" required>
+              <input type="date" name="date" id="pay_date" value="{{ date('Y-m-d') }}" class="rm-fld" required>
             </div>
             <div class="col-md-6">
               <label class="rm-lbl">Amount Paid (Rs) <span class="text-danger">*</span></label>
-              <input type="number" step="any" name="amount" class="rm-fld fw-bold text-success" placeholder="0.00" required>
+              <input type="number" step="any" min="0.01" name="amount" id="pay_amount" class="rm-fld fw-bold text-success" placeholder="0.00" required>
             </div>
           </div>
-          <div class="mb-3">
-            <label class="rm-lbl">Payment Method</label>
-            <select name="payment_method" class="rm-fld">
-              <option value="Cash">Cash</option>
-              <option value="Bank Transfer">Bank Transfer</option>
-              <option value="Cheque">Cheque</option>
-              <option value="Online">Online / EasyPaisa</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="rm-lbl">Note / Remarks</label>
-            <input type="text" name="note" class="rm-fld" placeholder="Cheque # or payment notes">
+          <div class="mb-2">
+            <label class="rm-lbl">Note / Remarks (Optional)</label>
+            <input type="text" name="note" id="pay_note" class="rm-fld" placeholder="e.g. Cash payment / remarks">
           </div>
         </div>
-        <div class="modal-footer bg-light">
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-success btn-sm px-4">Submit Payment</button>
+        <div class="modal-footer bg-light py-2">
+          <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success btn-sm px-4 fw-bold"><i class="fa fa-check me-1"></i> Submit Payment</button>
         </div>
       </form>
     </div>
@@ -1303,6 +1331,73 @@ $(document).ready(function() {
     $('#v_opening').val($(this).data('opening'));
     $('#vendorModalTitle').html('<i class="fa fa-pencil me-2"></i>Edit Material Vendor');
     new bootstrap.Modal(document.getElementById('vendorModal')).show();
+  });
+
+  // Vendor quick pay button
+  $(document).on('click', '.btn-pay-vendor', function() {
+    const vendorId = $(this).data('id');
+    const vendorName = $(this).data('name');
+    const balance = $(this).data('balance');
+
+    $('#pay_vendor_id').val(vendorId);
+    $('#vendorPaymentModalTitle').html('<i class="fa fa-money me-2"></i>Pay to ' + vendorName);
+    $('#vendorPaymentModalSub').text('Payable Balance: Rs ' + Number(balance || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+    $('#pay_amount').val('');
+    $('#pay_note').val('');
+
+    new bootstrap.Modal(document.getElementById('vendorPaymentModal')).show();
+    setTimeout(function() {
+      $('#pay_amount').focus();
+    }, 350);
+  });
+
+  // Purchase edit modal populate
+  $(document).on('click', '.btn-edit-purchase', function() {
+    const data = $(this).data('purchase');
+    if (!data) return;
+
+    $('#pur_id').val(data.id);
+    $('#purchaseModalTitle').html('<i class="fa fa-pencil me-2"></i>Edit Purchase #' + (data.purchase_no || ''));
+    $('#pur_vendor_id').val(data.vendor_id);
+    $('#pur_date').val(data.purchase_date);
+    $('#pur_discount').val(data.discount || 0);
+    $('#pur_extra').val(data.extra_cost || 0);
+    $('#pur_paid').val(data.paid_amount || 0);
+    $('#pur_note').val(data.note || '');
+    $('#purchaseSubmitBtn').html('<i class="fa fa-save me-1"></i> Update Purchase Order');
+
+    let rowsHtml = '';
+    if (data.items && data.items.length > 0) {
+      data.items.forEach(function(item) {
+        let optHtml = '<option value="">-- Select Material --</option>';
+        @foreach($materials as $m)
+          var isSel = (item.raw_material_id == {{ $m->id }}) ? 'selected' : '';
+          optHtml += '<option value="{{ $m->id }}" data-unit="{{ $m->unit }}" data-price="{{ $m->unit_price }}" ' + isSel + '>{{ $m->name }} ({{ $m->unit }})</option>';
+        @endforeach
+
+        var lineTot = (item.line_total ? parseFloat(item.line_total) : (parseFloat(item.qty || 0) * parseFloat(item.unit_price || 0))).toFixed(2);
+
+        rowsHtml += `
+          <tr class="pur-row">
+            <td>
+              <select name="raw_material_id[]" class="rm-fld mat-select" onchange="updateRowUnit(this)" required style="width:100%;">
+                ${optHtml}
+              </select>
+            </td>
+            <td><input type="number" step="any" name="qty[]" class="rm-fld mat-qty" placeholder="Qty" value="${item.qty}" oninput="calcPurchaseTotals()" required></td>
+            <td><input type="number" step="any" name="unit_price[]" class="rm-fld mat-price" placeholder="Rate" value="${item.unit_price}" oninput="calcPurchaseTotals()" required></td>
+            <td><input type="number" step="any" class="rm-fld mat-total" readonly value="${lineTot}"></td>
+            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="removePurchaseRow(this)"><i class="fa fa-times"></i></button></td>
+          </tr>
+        `;
+      });
+    }
+
+    if (rowsHtml) {
+      $('#purchaseItemRows').html(rowsHtml);
+    }
+    calcPurchaseTotals();
+    new bootstrap.Modal(document.getElementById('purchaseModal')).show();
   });
 
   // Delegate input events for dynamically added purchase rows
@@ -1447,11 +1542,14 @@ function clearVendorForm() {
 }
 
 function clearPurchaseForm() {
+  $('#pur_id').val('');
   $('#purchaseForm')[0].reset();
+  $('#purchaseModalTitle').html('<i class="fa fa-shopping-cart me-2"></i>New Raw Material Purchase');
+  $('#purchaseSubmitBtn').html('<i class="fa fa-check-circle me-1"></i> Save Purchase Order');
   $('#purchaseItemRows').html(`
     <tr class="pur-row">
       <td>
-        <select name="raw_material_id[]" class="rm-fld mat-select" onchange="updateRowUnit(this)" required>
+        <select name="raw_material_id[]" class="rm-fld mat-select" onchange="updateRowUnit(this)" required style="width:100%;">
           <option value="">-- Select Material --</option>
           @foreach($materials as $m)
             <option value="{{ $m->id }}" data-unit="{{ $m->unit }}" data-price="{{ $m->unit_price }}">{{ $m->name }} ({{ $m->unit }})</option>
