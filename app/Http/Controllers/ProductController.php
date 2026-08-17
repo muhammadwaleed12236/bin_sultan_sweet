@@ -871,4 +871,84 @@ class ProductController extends Controller
             return redirect()->back()->with('error', 'Failed to reset stock: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Delete a single product and associated variants/stocks
+     */
+    public function destroy($id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $product = Product::findOrFail($id);
+            $productName = $product->item_name ?: ('Item ' . $product->item_code);
+
+            // Delete stocks for this product
+            DB::table('stocks')->where('product_id', $product->id)->delete();
+            DB::table('warehouse_stocks')->where('product_id', $product->id)->delete();
+
+            // Delete variants
+            ProductVariant::where('product_id', $product->id)->delete();
+
+            // Delete product discounts if any
+            DB::table('product_discounts')->where('product_id', $product->id)->delete();
+
+            // Delete product
+            $product->delete();
+
+            DB::commit();
+
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Product '{$productName}' deleted successfully."
+                ]);
+            }
+
+            return redirect()->route('product')->with('success', "Product '{$productName}' deleted successfully.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Failed to delete product: " . $e->getMessage()
+                ], 500);
+            }
+            return redirect()->back()->with('error', "Failed to delete product: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Bulk Delete multiple products
+     */
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        if (empty($ids) || !is_array($ids)) {
+            return response()->json(['success' => false, 'message' => 'No products selected.'], 400);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            DB::table('stocks')->whereIn('product_id', $ids)->delete();
+            DB::table('warehouse_stocks')->whereIn('product_id', $ids)->delete();
+            ProductVariant::whereIn('product_id', $ids)->delete();
+            DB::table('product_discounts')->whereIn('product_id', $ids)->delete();
+            Product::whereIn('id', $ids)->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => count($ids) . ' products deleted successfully.'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete products: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

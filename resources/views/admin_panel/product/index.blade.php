@@ -290,6 +290,25 @@
 
 .pc-act-bc:hover { background: #d4f0dc; color: #0a5f35; }
 
+.pc-act-del {
+  background: #fef2f2;
+  border-color: #fecdd3;
+  color: #dc2626;
+}
+
+.pc-act-del:hover { background: #fee2e2; color: #b91c1c; }
+
+.pc-btn-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+}
+
+.pc-btn-danger:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
 /* ═══════ PAGINATION ═══════ */
 .pc-pagi {
   margin-top: 1rem;
@@ -417,8 +436,11 @@
         <a href="create_prodcut" class="pc-btn pc-btn-primary pc-btn-sm">
           <i class="bi bi-plus-circle"></i>Add Product
         </a>
-        <button id="bulkEditBtn" class="pc-btn pc-btn-primary pc-btn-sm" style="display:none;">
+        <button id="bulkEditBtn" type="button" class="pc-btn pc-btn-primary pc-btn-sm" style="display:none;">
           <i class="bi bi-pencil-square"></i>Bulk Edit
+        </button>
+        <button id="bulkDeleteBtn" type="button" class="pc-btn pc-btn-danger pc-btn-sm" style="display:none;">
+          <i class="bi bi-trash"></i>Bulk Delete
         </button>
         <button id="createDiscountBtn" class="pc-btn pc-btn-primary pc-btn-sm">
           <i class="bi bi-tag"></i>Create Discount
@@ -563,6 +585,9 @@
                     <a href="{{ route('product.barcode', $product->id) }}" class="pc-act pc-act-bc" target="_blank">
                       <i class="bi bi-upc-scan"></i>Barcode
                     </a>
+                    <button type="button" class="pc-act pc-act-del" onclick="deleteSingleProduct({{ $product->id }}, '{{ addslashes($product->item_name) }}')">
+                      <i class="bi bi-trash"></i>Delete
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -672,6 +697,7 @@ $(document).ready(function() {
   });
 
   var allSelectedIds = new Set();
+  window.allSelectedIds = allSelectedIds;
   var selectAllPagesActive = false;
 
   // Update selected count display
@@ -680,8 +706,10 @@ $(document).ready(function() {
     $('#selectedCount').text(count);
     if (count > 0) {
       $('#bulkEditBtn').show();
+      $('#bulkDeleteBtn').show();
     } else {
       $('#bulkEditBtn').hide();
+      $('#bulkDeleteBtn').hide();
     }
   }
 
@@ -727,6 +755,7 @@ $(document).ready(function() {
         data: { search: search, has_stock: hasStockOnly ? 1 : 0 },
         success: function(ids) {
           allSelectedIds = new Set(ids.map(String));
+          window.allSelectedIds = allSelectedIds;
           // Check all visible checkboxes too
           $('.selectProduct').each(function() { $(this).prop('checked', true); });
           $('#selectAll').prop('checked', true);
@@ -737,6 +766,7 @@ $(document).ready(function() {
     } else {
       selectAllPagesActive = false;
       allSelectedIds.clear();
+      window.allSelectedIds = allSelectedIds;
       $('.selectProduct').prop('checked', false);
       $('#selectAll').prop('checked', false);
       updateSelectedCount();
@@ -780,7 +810,8 @@ $(document).ready(function() {
   });
 
   // Bulk Edit button
-  $('#bulkEditBtn').click(function() {
+  $(document).on('click', '#bulkEditBtn', function(e) {
+    e.preventDefault();
     var ids = Array.from(allSelectedIds);
     if (ids.length === 0) {
       Swal.fire({ icon: 'error', title: 'Oops...', text: 'Please select at least one product!' });
@@ -790,6 +821,12 @@ $(document).ready(function() {
     form.append('@csrf');
     ids.forEach(function(id) { form.append($('<input>').attr({ type: 'hidden', name: 'ids[]', value: id })); });
     form.appendTo('body').submit();
+  });
+
+  // Bulk Delete button
+  $(document).on('click', '#bulkDeleteBtn', function(e) {
+    e.preventDefault();
+    bulkDeleteProducts();
   });
 
   $('#createDiscountBtn').click(function() {
@@ -905,6 +942,124 @@ function confirmResetStock() {
     }
   });
 }
+
+function deleteSingleProduct(id, name) {
+  Swal.fire({
+    title: 'Delete Product?',
+    html: `Are you sure you want to delete <strong>${name}</strong>?<br><small class="text-danger">This will delete its stock, variants, and discounts.</small>`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#dc2626',
+    cancelButtonColor: '#64748b',
+    confirmButtonText: 'Yes, Delete Product',
+    cancelButtonText: 'Cancel'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      Swal.fire({
+        title: 'Deleting...',
+        text: 'Please wait',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => { Swal.showLoading(); }
+      });
+
+      $.ajax({
+        url: `/products/${id}`,
+        type: 'DELETE',
+        data: {
+          _token: "{{ csrf_token() }}"
+        },
+        success: function(response) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Deleted!',
+            text: response.message || 'Product deleted successfully.',
+            timer: 1500,
+            showConfirmButton: false
+          }).then(() => {
+            location.reload();
+          });
+        },
+        error: function(xhr) {
+          var msg = xhr.responseJSON ? xhr.responseJSON.message : 'Error deleting product';
+          Swal.fire({
+            icon: 'error',
+            title: 'Failed',
+            text: msg
+          });
+        }
+      });
+    }
+  });
+}
+
+window.bulkDeleteProducts = function() {
+  var ids = [];
+  if (window.allSelectedIds && window.allSelectedIds.size > 0) {
+    ids = Array.from(window.allSelectedIds);
+  }
+  if (!ids.length) {
+    $('.selectProduct:checked').each(function() {
+      var val = $(this).val();
+      if (val) ids.push(val);
+    });
+  }
+  ids = Array.from(new Set(ids.map(String).filter(Boolean)));
+
+  if (!ids.length) {
+    Swal.fire({ icon: 'warning', title: 'No Selection', text: 'Please select at least one product to delete.' });
+    return;
+  }
+
+  Swal.fire({
+    title: `Delete ${ids.length} Products?`,
+    html: `Are you sure you want to permanently delete <strong>${ids.length}</strong> selected products?<br><small class="text-danger">This will delete their stocks, variants, and discounts.</small>`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#dc2626',
+    cancelButtonColor: '#64748b',
+    confirmButtonText: `Yes, Delete ${ids.length} Products`,
+    cancelButtonText: 'Cancel'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      Swal.fire({
+        title: 'Deleting...',
+        text: 'Please wait',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => { Swal.showLoading(); }
+      });
+
+      $.ajax({
+        url: "{{ route('products.bulk-delete') }}",
+        type: 'POST',
+        data: {
+          _token: "{{ csrf_token() }}",
+          ids: ids
+        },
+        success: function(response) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Deleted!',
+            text: response.message || 'Products deleted successfully.',
+            timer: 1500,
+            showConfirmButton: false
+          }).then(() => {
+            location.reload();
+          });
+        },
+        error: function(xhr) {
+          var msg = xhr.responseJSON ? xhr.responseJSON.message : 'Error deleting products';
+          Swal.fire({
+            icon: 'error',
+            title: 'Failed',
+            text: msg
+          });
+        }
+      });
+    }
+  });
+};
 </script>
 <style>
   #paginationLinks nav span, #paginationLinks nav a {

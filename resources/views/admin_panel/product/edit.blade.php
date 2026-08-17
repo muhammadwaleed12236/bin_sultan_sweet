@@ -430,11 +430,15 @@
                                             </div>
                                         </div>
 
-                                        <!-- Submit Button -->
-                                        <div class="mt-4">
+                                        <!-- Submit & Delete Buttons -->
+                                        <div class="mt-4 d-flex gap-2 flex-wrap">
                                             <button type="submit" id="submitProductBtn"
-                                                class="btn w-100 py-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; font-weight: 700; font-size: 16px; border: none; border-radius: 10px;">
+                                                class="btn flex-grow-1 py-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; font-weight: 700; font-size: 16px; border: none; border-radius: 10px;">
                                                 <i class="la la-save"></i> Update Product
+                                            </button>
+                                            <button type="button" onclick="deleteThisProduct()"
+                                                class="btn py-3 px-4" style="background: #fee2e2; color: #dc2626; font-weight: 700; font-size: 16px; border: 1px solid #fecdd3; border-radius: 10px;">
+                                                <i class="la la-trash"></i> Delete Product
                                             </button>
                                         </div>
                                     </form>
@@ -777,6 +781,56 @@ $(document).ready(function() {
             $('#subcategory-dropdown').empty().append('<option selected value="">Select Subcategory</option>');
         }
     });
+
+    function deleteThisProduct() {
+        Swal.fire({
+            title: 'Delete this Product?',
+            html: `Are you sure you want to permanently delete <strong>"{{ addslashes($product->item_name) }}"</strong>?<br><small class="text-danger">This will delete its stocks, variants, and discounts.</small>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Yes, Delete Product',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Deleting...',
+                    text: 'Please wait',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+
+                $.ajax({
+                    url: "{{ route('products.destroy', $product->id) }}",
+                    type: 'DELETE',
+                    data: {
+                        _token: "{{ csrf_token() }}"
+                    },
+                    success: function(response) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Deleted!',
+                            text: response.message || 'Product deleted successfully.',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.href = "{{ route('product') }}";
+                        });
+                    },
+                    error: function(xhr) {
+                        var msg = xhr.responseJSON ? xhr.responseJSON.message : 'Error deleting product';
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Failed',
+                            text: msg
+                        });
+                    }
+                });
+            }
+        });
+    }
 </script>
 
 @endsection

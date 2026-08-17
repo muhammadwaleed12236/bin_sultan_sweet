@@ -108,6 +108,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/products/bulk-edit', [ProductController::class, 'bulkEdit'])->name('products.bulk-edit');
     Route::post('/products/bulk-update', [ProductController::class, 'bulkUpdate'])->name('products.bulk-update');
     Route::get('/products/{id}/edit', [ProductController::class, 'edit'])->name('products.edit');
+    Route::delete('/products/{id}', [ProductController::class, 'destroy'])->name('products.destroy');
+    Route::post('/products/{id}/delete', [ProductController::class, 'destroy'])->name('products.delete');
+    Route::post('/products/bulk-delete', [ProductController::class, 'bulkDelete'])->name('products.bulk-delete');
 
     Route::prefix('discount')->group(function () {
         Route::get('/', [DiscountController::class, 'index'])->name('discount.index')->middleware('permission:Discount Products');
