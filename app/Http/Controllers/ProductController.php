@@ -847,10 +847,27 @@ class ProductController extends Controller
                             $variant->update($variantData);
                             // For non-KG, update per-variant stock record
                             if ($product->unit_type != 'kg') {
-                                DB::table('stocks')
+                                $stockRecord = DB::table('stocks')
                                     ->where('product_id', $product->id)
                                     ->where('variant_id', $variant->id)
-                                    ->update(['qty' => $vStockQty, 'updated_at' => now()]);
+                                    ->where('branch_id', 1)
+                                    ->where('warehouse_id', 1)
+                                    ->first();
+                                if ($stockRecord) {
+                                    DB::table('stocks')
+                                        ->where('id', $stockRecord->id)
+                                        ->update(['qty' => $vStockQty, 'updated_at' => now()]);
+                                } else {
+                                    DB::table('stocks')->insert([
+                                        'branch_id'    => 1,
+                                        'warehouse_id' => 1,
+                                        'product_id'   => $product->id,
+                                        'variant_id'   => $variant->id,
+                                        'qty'          => $vStockQty,
+                                        'created_at'   => now(),
+                                        'updated_at'   => now(),
+                                    ]);
+                                }
                             }
                         } else {
                             if ($product->unit_type != 'kg') {

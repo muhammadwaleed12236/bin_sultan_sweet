@@ -363,7 +363,7 @@ class ReportingController extends Controller
 
                     // Live stock from stocks table
                     $liveStock = (float)($liveStockMap[$key] ?? 0);
-                    if ($liveStock == 0 && ($v->is_default || $p->variants->first()->id == $v->id)) {
+                    if ($v->is_default || $p->variants->first()->id == $v->id) {
                         $liveStock += (float)($liveStockMap[$p->id . '_0'] ?? 0);
                     }
 
