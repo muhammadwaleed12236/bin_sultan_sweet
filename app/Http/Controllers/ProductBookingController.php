@@ -60,12 +60,8 @@ class ProductBookingController extends Controller
             $price = (float)($prices[$index] ?? 0);
 
             // Weight conversion logic
-            if ($vModel && $productModel && strtolower($productModel->unit_type ?? '') === 'kg' && $vModel->size_value > 0) {
-                $multiplier = 1;
-                $sUnit = strtolower($vModel->size_unit ?? 'kg');
-                if ($sUnit === 'kg') $multiplier = (float)$vModel->size_value;
-                elseif (in_array($sUnit, ['gm','gram','grams'])) $multiplier = (float)$vModel->size_value / 1000;
-                
+            if ($vModel && $productModel && strtolower($productModel->unit_type ?? '') === 'kg') {
+                $multiplier = $vModel->kg_size ?? 1.0;
                 $qty = $qty * $multiplier;
                 if ($multiplier > 0) $price = $price / $multiplier;
                 $unit = 'KG';

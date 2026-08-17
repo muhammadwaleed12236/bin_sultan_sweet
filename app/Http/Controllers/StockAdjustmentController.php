@@ -87,12 +87,8 @@ class StockAdjustmentController extends Controller
                      if ($variantId) {
                          $vModel = \App\Models\ProductVariant::find($variantId);
                          if ($vModel) {
-                             $kgSize = floatval($vModel->size_value);
-                             if ($vModel->size_unit === 'kg') {
-                                 $qtyStock = ($kgSize * $qty * 1000);
-                             } else {
-                                 $qtyStock = ($kgSize * $qty);
-                             }
+                             $kgSize = $vModel->kg_size;
+                             $qtyStock = ($kgSize * $qty * 1000);
                          }
                      } else {
                          $qtyStock = $qty * 1000;

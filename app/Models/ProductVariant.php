@@ -31,15 +31,51 @@ class ProductVariant extends Model
     }
 
     /**
+     * Get size in KG equivalent, with intelligent fallback if size_value is 0 or empty
+     */
+    public function getKgSizeAttribute()
+    {
+        $val = floatval($this->size_value);
+        if ($val > 0) {
+            $unit = strtolower($this->size_unit ?? '');
+            if ($unit === 'kg') {
+                return $val;
+            } elseif (in_array($unit, ['g', 'gm', 'gram', 'grams'])) {
+                return $val / 1000;
+            } elseif ($unit === 'pound') {
+                return $val * 0.453592;
+            }
+            return $val;
+        }
+
+        // Automatic fallback based on name or label
+        $str = strtolower(($this->variant_name ?? '') . ' ' . ($this->size_label ?? ''));
+        if (preg_match('/(\d+(?:\.\d+)?)\s*(?:kg|kilo)/i', $str, $m)) {
+            return floatval($m[1]);
+        }
+        if (preg_match('/(\d+(?:\.\d+)?)\s*(?:g|gm|gram)/i', $str, $m)) {
+            return floatval($m[1]) / 1000;
+        }
+        if (preg_match('/half\s*kg/i', $str)) {
+            return 0.5;
+        }
+        if (preg_match('/pao|pow/i', $str)) {
+            return 0.25;
+        }
+        if (preg_match('/(\d+(?:\.\d+)?)\s*(?:pound|lb)/i', $str, $m)) {
+            return floatval($m[1]) * 0.453592;
+        }
+
+        return 1.0; // Default fallback to 1 KG
+    }
+
+    /**
      * Convert kg to grams automatically
      * If size_unit is "kg", return grams equivalent
      */
     public function getGramsAttribute()
     {
-        if ($this->size_unit === 'kg') {
-            return $this->size_value * 1000;
-        }
-        return $this->size_value;
+        return $this->kg_size * 1000;
     }
 
     /**

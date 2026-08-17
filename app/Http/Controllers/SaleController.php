@@ -429,14 +429,41 @@ class SaleController extends Controller
     public function getProductVariants($id)
     {
         $product = Product::with(['variants', 'stock'])->findOrFail($id);
-        $variants = $product->variants->map(function ($v) use ($product) {
-            // Get real stock from stocks table for this variant
+
+        $totalStock = (float) Stock::where('product_id', $product->id)
+            ->where('branch_id', 1)
+            ->where('warehouse_id', 1)
+            ->sum('qty');
+
+        $baseStock = (float) (Stock::where('product_id', $product->id)
+            ->where('branch_id', 1)
+            ->where('warehouse_id', 1)
+            ->whereNull('variant_id')
+            ->value('qty') ?? 0);
+
+        $isKg = (strtolower($product->unit_type ?? '') === 'kg');
+
+        $variants = $product->variants->map(function ($v) use ($product, $totalStock, $baseStock, $isKg) {
+            // Get real stock from stocks table for this specific variant
             $vStock = Stock::where('product_id', $product->id)
                 ->where('branch_id', 1)
                 ->where('warehouse_id', 1)
                 ->where('variant_id', $v->id)
                 ->first();
             
+            $stock = 0;
+            if ($vStock && (float)$vStock->qty > 0) {
+                $stock = (float) $vStock->qty;
+            } elseif ($isKg) {
+                // For KG products, stock is maintained at product-level in grams (shared among sizes)
+                $stock = $totalStock;
+            } elseif ($baseStock > 0 && ($v->is_default || $product->variants->count() === 1)) {
+                // If base product has stock without variant_id, associate it with default or single variant
+                $stock = $baseStock;
+            } else {
+                $stock = (float) ($v->stock_qty ?? 0);
+            }
+
             return [
                 'id'              => $v->id,
                 'name'            => $v->variant_name,
@@ -445,14 +472,10 @@ class SaleController extends Controller
                 'size_unit'       => $v->size_unit,
                 'price'           => (float) $v->price,
                 'wholesale_price' => (float) ($v->wholesale_price ?: $v->price),
-                'stock'           => $vStock ? (float) $vStock->qty : 0,
+                'stock'           => $stock,
                 'is_default'      => $v->is_default,
             ];
         });
-        $totalStock = Stock::where('product_id', $product->id)
-            ->where('branch_id', 1)
-            ->where('warehouse_id', 1)
-            ->sum('qty');
 
         return response()->json([
             'product_id'   => $product->id,
@@ -860,12 +883,8 @@ class SaleController extends Controller
                     if ($vId) {
                         $vModel = \App\Models\ProductVariant::find($vId);
                         if ($vModel) {
-                            $kgSize = floatval($vModel->size_value);
-                            if ($vModel->size_unit === 'kg') {
-                                $deductQty = ($kgSize * $qty * 1000);
-                            } else {
-                                $deductQty = ($kgSize * $qty);
-                            }
+                            $kgSize = $vModel->kg_size;
+                            $deductQty = ($kgSize * $qty * 1000);
                         }
                     } else {
                         $deductQty = $qty * 1000; // If no variant, assuming qty was inputted in KG
@@ -878,6 +897,10 @@ class SaleController extends Controller
                     $stockQuery->whereNull('variant_id');
                 }
                 $stock = $stockQuery->first();
+                if (!$stock && $isGram) {
+                    // Fallback to any stock row for this product if variant_id was set during product creation
+                    $stock = Stock::where('product_id', $product_id)->where('branch_id', 1)->where('warehouse_id', 1)->first();
+                }
 
                 // Only Sale updates stock (We decided to deduct for save_token as well so we can always do diff updates safely)
                 if ($action === 'sale' || $action === 'save_token') {
@@ -1129,12 +1152,8 @@ class SaleController extends Controller
                         if ($vId) {
                             $vModel = \App\Models\ProductVariant::find($vId);
                             if ($vModel) {
-                                $kgSize = floatval($vModel->size_value);
-                                if ($vModel->size_unit === 'kg') {
-                                    $deductQtyDiff = ($kgSize * $qty_diff * 1000);
-                                } else {
-                                    $deductQtyDiff = ($kgSize * $qty_diff);
-                                }
+                                $kgSize = $vModel->kg_size;
+                                $deductQtyDiff = ($kgSize * $qty_diff * 1000);
                             }
                         } else {
                             $deductQtyDiff = $qty_diff * 1000;
@@ -1147,6 +1166,9 @@ class SaleController extends Controller
                     if ($dbVariantId) $stockQuery->where('variant_id', $dbVariantId);
                     else $stockQuery->whereNull('variant_id');
                     $stock = $stockQuery->first();
+                    if (!$stock && $isGram) {
+                        $stock = \App\Models\Stock::where('product_id', $product_id)->where('branch_id', 1)->where('warehouse_id', 1)->first();
+                    }
                     
                     if ($stock) {
                         $stock->qty -= $deductQtyDiff;
@@ -1181,12 +1203,8 @@ class SaleController extends Controller
                         if ($vid) {
                             $vModel = \App\Models\ProductVariant::find($vid);
                             if ($vModel) {
-                                $kgSize = floatval($vModel->size_value);
-                                if ($vModel->size_unit === 'kg') {
-                                    $addBackQty = ($kgSize * $old_qty * 1000);
-                                } else {
-                                    $addBackQty = ($kgSize * $old_qty);
-                                }
+                                $kgSize = $vModel->kg_size;
+                                $addBackQty = ($kgSize * $old_qty * 1000);
                             }
                         } else {
                             $addBackQty = $old_qty * 1000;
@@ -1330,12 +1348,8 @@ class SaleController extends Controller
             $price = (float)($prices[$index] ?? 0);
 
             // Weight conversion logic
-            if ($vModel && $productModel && strtolower($productModel->unit_type ?? '') === 'kg' && $vModel->size_value > 0) {
-                $multiplier = 1;
-                $sUnit = strtolower($vModel->size_unit ?? 'kg');
-                if ($sUnit === 'kg') $multiplier = (float)$vModel->size_value;
-                elseif (in_array($sUnit, ['gm','gram','grams'])) $multiplier = (float)$vModel->size_value / 1000;
-                
+            if ($vModel && $productModel && strtolower($productModel->unit_type ?? '') === 'kg') {
+                $multiplier = $vModel->kg_size ?? 1.0;
                 $qty = $qty * $multiplier;
                 if ($multiplier > 0) $price = $price / $multiplier;
                 $unit = 'KG';
@@ -1776,12 +1790,8 @@ class SaleController extends Controller
                         if (!empty($vId)) {
                             $vModel = \App\Models\ProductVariant::find($vId);
                             if ($vModel) {
-                                $kgSize = floatval($vModel->size_value);
-                                if (strtolower($vModel->size_unit) === 'kg') {
-                                    $returnQtyInDb = ($kgSize * $qty * 1000);
-                                } else {
-                                    $returnQtyInDb = ($kgSize * $qty);
-                                }
+                                $kgSize = $vModel->kg_size;
+                                $returnQtyInDb = ($kgSize * $qty * 1000);
                             } else {
                                 $returnQtyInDb = $qty * 1000;
                             }
@@ -2044,12 +2054,8 @@ class SaleController extends Controller
             $price = (float)($prices[$index] ?? 0);
 
             // WEIGHT CONVERSION LOGIC
-            if ($vModel && $productModel && strtolower($productModel->unit_type ?? '') === 'kg' && $vModel->size_value > 0) {
-                $multiplier = 1;
-                $sUnit = strtolower($vModel->size_unit ?? 'kg');
-                if ($sUnit === 'kg') $multiplier = (float)$vModel->size_value;
-                elseif (in_array($sUnit, ['gm','gram','grams'])) $multiplier = (float)$vModel->size_value / 1000;
-                
+            if ($vModel && $productModel && strtolower($productModel->unit_type ?? '') === 'kg') {
+                $multiplier = $vModel->kg_size ?? 1.0;
                 $qty = $qty * $multiplier;
                 if ($multiplier > 0) $price = $price / $multiplier;
                 $unit = 'KG';
@@ -2285,12 +2291,8 @@ class SaleController extends Controller
                     if ($vId) {
                         $vModel = \App\Models\ProductVariant::find($vId);
                         if ($vModel) {
-                            $kgSize = floatval($vModel->size_value);
-                            if ($vModel->size_unit === 'kg') {
-                                $deductQtyDiff = ($kgSize * $qty_diff * 1000);
-                            } else {
-                                $deductQtyDiff = ($kgSize * $qty_diff);
-                            }
+                            $kgSize = $vModel->kg_size;
+                            $deductQtyDiff = ($kgSize * $qty_diff * 1000);
                         }
                     } else {
                         $deductQtyDiff = $qty_diff * 1000;
@@ -2339,12 +2341,8 @@ class SaleController extends Controller
                     if ($vid) {
                         $vModel = \App\Models\ProductVariant::find($vid);
                         if ($vModel) {
-                            $kgSize = floatval($vModel->size_value);
-                            if ($vModel->size_unit === 'kg') {
-                                $addBackQty = ($kgSize * $old_qty * 1000);
-                            } else {
-                                $addBackQty = ($kgSize * $old_qty);
-                            }
+                            $kgSize = $vModel->kg_size;
+                            $addBackQty = ($kgSize * $old_qty * 1000);
                         }
                     } else {
                         $addBackQty = $old_qty * 1000;
@@ -2525,12 +2523,8 @@ class SaleController extends Controller
             $qty = floatval($qtys[$index] ?? 1);
             $unit = $units[$index] ?? '';
 
-            if ($vModel && $product && strtolower($product->unit_type ?? '') === 'kg' && $vModel->size_value > 0) {
-                $multiplier = 1;
-                $sUnit = strtolower($vModel->size_unit ?? 'kg');
-                if ($sUnit === 'kg') $multiplier = (float)$vModel->size_value;
-                elseif (in_array($sUnit, ['gm','gram','grams'])) $multiplier = (float)$vModel->size_value / 1000;
-                
+            if ($vModel && $product && strtolower($product->unit_type ?? '') === 'kg') {
+                $multiplier = $vModel->kg_size ?? 1.0;
                 $qty = $qty * $multiplier;
                 if ($multiplier > 0) $price = $price / $multiplier;
                 $unit = 'KG';
@@ -2622,12 +2616,8 @@ class SaleController extends Controller
             $price = floatval($prices[$index] ?? 0);
             $unit = ($product && $product->unit_type) ? $product->unit_type : ($units[$index] ?? '');
 
-            if ($vModel && $product && strtolower($product->unit_type ?? '') === 'kg' && $vModel->size_value > 0) {
-                $multiplier = 1;
-                $sUnit = strtolower($vModel->size_unit ?? 'kg');
-                if ($sUnit === 'kg') $multiplier = (float)$vModel->size_value;
-                elseif (in_array($sUnit, ['gm','gram','grams'])) $multiplier = (float)$vModel->size_value / 1000;
-                
+            if ($vModel && $product && strtolower($product->unit_type ?? '') === 'kg') {
+                $multiplier = $vModel->kg_size ?? 1.0;
                 $qty = $qty * $multiplier;
                 if ($multiplier > 0) $price = $price / $multiplier;
                 $unit = 'KG';

@@ -261,13 +261,36 @@ class ProductController extends Controller
                     $sizeValue = floatval($variantSizeValues[$index] ?? 0);
                     $sizeUnit = $variantSizeUnits[$index] ?? $request->input('unit_type');
 
-                    // If unit is KG, user enters Grams in form, so convert to KG for DB
                     $dbSizeValue = $sizeValue;
                     $sizeLabel = $vName;
                     
                     if ($sizeUnit === 'kg') {
-                        $dbSizeValue = $sizeValue / 1000; // Convert Grams to KG for storage
+                        if ($sizeValue > 0) {
+                            $dbSizeValue = $sizeValue / 1000;
+                        } else {
+                            $str = strtolower($vName);
+                            if (preg_match('/(\d+(?:\.\d+)?)\s*(?:kg|kilo|kh)/i', $str, $m)) {
+                                $dbSizeValue = floatval($m[1]);
+                            } elseif (preg_match('/(\d+(?:\.\d+)?)\s*(?:g|gm|gram)/i', $str, $m)) {
+                                $dbSizeValue = floatval($m[1]) / 1000;
+                            } elseif (str_contains($str, 'half')) {
+                                $dbSizeValue = 0.5;
+                            } elseif (str_contains($str, 'pao') || str_contains($str, 'pow')) {
+                                $dbSizeValue = 0.25;
+                            } else {
+                                $dbSizeValue = 1.0;
+                            }
+                        }
                         $sizeLabel = $vName . ' (' . number_format($dbSizeValue, 3) . ' KG)';
+                    } elseif ($sizeUnit === 'pound') {
+                        if ($dbSizeValue <= 0) {
+                            $str = strtolower($vName);
+                            if (preg_match('/(\d+(?:\.\d+)?)\s*(?:pound|lb)/i', $str, $m)) {
+                                $dbSizeValue = floatval($m[1]);
+                            } else {
+                                $dbSizeValue = 1.0;
+                            }
+                        }
                     }
 
                     $vPrice = floatval($variantPrices[$index] ?? 0);
@@ -290,16 +313,34 @@ class ProductController extends Controller
                         'is_active'       => true,
                     ]);
 
-                    // Single variant stock entry
-                    DB::table('stocks')->insert([
-                        'branch_id'    => 1,
-                        'warehouse_id' => 1,
-                        'product_id'   => $product->id,
-                        'variant_id'   => $variant->id,
-                        'qty'          => $vStock,
-                        'created_at'   => now(),
-                        'updated_at'   => now(),
-                    ]);
+                    // Stock entry
+                    if ($product->unit_type === 'kg') {
+                        $stockInGrams = $vStock > 0 ? ($vStock * 1000) : 0;
+                        $existingKgStock = DB::table('stocks')->where('product_id', $product->id)->whereNull('variant_id')->where('branch_id', 1)->where('warehouse_id', 1)->first();
+                        if ($existingKgStock) {
+                            DB::table('stocks')->where('id', $existingKgStock->id)->increment('qty', $stockInGrams);
+                        } else {
+                            DB::table('stocks')->insert([
+                                'branch_id'    => 1,
+                                'warehouse_id' => 1,
+                                'product_id'   => $product->id,
+                                'variant_id'   => null,
+                                'qty'          => $stockInGrams,
+                                'created_at'   => now(),
+                                'updated_at'   => now(),
+                            ]);
+                        }
+                    } else {
+                        DB::table('stocks')->insert([
+                            'branch_id'    => 1,
+                            'warehouse_id' => 1,
+                            'product_id'   => $product->id,
+                            'variant_id'   => $variant->id,
+                            'qty'          => $vStock,
+                            'created_at'   => now(),
+                            'updated_at'   => now(),
+                        ]);
+                    }
 
                     $totalStock += $vStock;
                     if ($isDefault) {
@@ -428,8 +469,32 @@ class ProductController extends Controller
                     $sizeLabel = $vName;
                     
                     if ($sizeUnit === 'kg') {
-                        $dbSizeValue = $sizeValue / 1000;
+                        if ($sizeValue > 0) {
+                            $dbSizeValue = $sizeValue / 1000;
+                        } else {
+                            $str = strtolower($vName);
+                            if (preg_match('/(\d+(?:\.\d+)?)\s*(?:kg|kilo|kh)/i', $str, $m)) {
+                                $dbSizeValue = floatval($m[1]);
+                            } elseif (preg_match('/(\d+(?:\.\d+)?)\s*(?:g|gm|gram)/i', $str, $m)) {
+                                $dbSizeValue = floatval($m[1]) / 1000;
+                            } elseif (str_contains($str, 'half')) {
+                                $dbSizeValue = 0.5;
+                            } elseif (str_contains($str, 'pao') || str_contains($str, 'pow')) {
+                                $dbSizeValue = 0.25;
+                            } else {
+                                $dbSizeValue = 1.0;
+                            }
+                        }
                         $sizeLabel = $vName . ' (' . number_format($dbSizeValue, 3) . ' KG)';
+                    } elseif ($sizeUnit === 'pound') {
+                        if ($dbSizeValue <= 0) {
+                            $str = strtolower($vName);
+                            if (preg_match('/(\d+(?:\.\d+)?)\s*(?:pound|lb)/i', $str, $m)) {
+                                $dbSizeValue = floatval($m[1]);
+                            } else {
+                                $dbSizeValue = 1.0;
+                            }
+                        }
                     }
 
                     $vPrice = floatval($variantPrices[$index] ?? 0);
@@ -462,15 +527,33 @@ class ProductController extends Controller
                         $variant = ProductVariant::create($variantData);
 
                         // Insert initial stock for new variant
-                        DB::table('stocks')->insert([
-                            'branch_id'    => 1,
-                            'warehouse_id' => 1,
-                            'product_id'   => $product->id,
-                            'variant_id'   => $variant->id,
-                            'qty'          => $vStock,
-                            'created_at'   => now(),
-                            'updated_at'   => now(),
-                        ]);
+                        if ($product->unit_type === 'kg') {
+                            $stockInGrams = $vStock > 0 ? ($vStock * 1000) : 0;
+                            $existingKgStock = DB::table('stocks')->where('product_id', $product->id)->whereNull('variant_id')->where('branch_id', 1)->where('warehouse_id', 1)->first();
+                            if ($existingKgStock) {
+                                DB::table('stocks')->where('id', $existingKgStock->id)->increment('qty', $stockInGrams);
+                            } else {
+                                DB::table('stocks')->insert([
+                                    'branch_id'    => 1,
+                                    'warehouse_id' => 1,
+                                    'product_id'   => $product->id,
+                                    'variant_id'   => null,
+                                    'qty'          => $stockInGrams,
+                                    'created_at'   => now(),
+                                    'updated_at'   => now(),
+                                ]);
+                            }
+                        } else {
+                            DB::table('stocks')->insert([
+                                'branch_id'    => 1,
+                                'warehouse_id' => 1,
+                                'product_id'   => $product->id,
+                                'variant_id'   => $variant->id,
+                                'qty'          => $vStock,
+                                'created_at'   => now(),
+                                'updated_at'   => now(),
+                            ]);
+                        }
                     }
 
                     if ($isDefault) {

@@ -450,10 +450,7 @@ class ReportingController extends Controller
                 if ($is_kg && $p->variants->count() > 0) {
                     foreach ($p->variants as $v) {
                         $vKey = $p->id . '_' . $v->id;
-                        $mul = floatval($v->size_value); 
-                        if ($v->size_unit === 'kg') {
-                            $mul *= 1000;
-                        }
+                        $mul = $v->grams; 
 
                         $vPurchRaw = (float)($mapP[$vKey] ?? 0);
                         $purchased += $vPurchRaw * $mul;
@@ -503,8 +500,7 @@ class ReportingController extends Controller
                     if ($is_kg && $p->variants->count() > 0) {
                         foreach ($p->variants as $v) {
                             $vKey = $p->id . '_' . $v->id;
-                            $mul = floatval($v->size_value); 
-                            if ($v->size_unit === 'kg') { $mul *= 1000; }
+                            $mul = $v->grams;
                             $vPurchRaw = (float)($mapPAfter[$vKey] ?? 0);
                             $purchAft += $vPurchRaw * $mul;
                             $pRetAft  += (float)($mapPRAfter[$vKey] ?? 0) * $mul;
@@ -973,14 +969,8 @@ class ReportingController extends Controller
                             $name .= ' (' . ($v->size_label ?: $v->variant_name) . ')';
                             
                             // Check if we should convert to weight-based display
-                            if ($p && strtolower($p->unit_type) === 'kg' && $v->size_value > 0) {
-                                $multiplier = 1;
-                                $sUnit = strtolower($v->size_unit ?? 'kg');
-                                if ($sUnit === 'kg') {
-                                    $multiplier = floatval($v->size_value);
-                                } elseif ($sUnit === 'gm' || $sUnit === 'grams' || $sUnit === 'gram') {
-                                    $multiplier = floatval($v->size_value) / 1000;
-                                }
+                            if ($p && strtolower($p->unit_type) === 'kg') {
+                                $multiplier = $v->kg_size ?? 1.0;
                                 
                                 // Convert display values: 2 boxes of 0.250kg -> 0.500kg
                                 $qty = $qty * $multiplier;
@@ -1177,15 +1167,8 @@ class ReportingController extends Controller
                         $name .= ' (' . ($v->size_label ?: $v->variant_name) . ')';
                         
                         // Check weight-based conversion
-                        if ($product && strtolower($product->unit_type) === 'kg' && $v->size_value > 0) {
-                            $multiplier = 1;
-                            $sUnit = strtolower($v->size_unit ?? 'kg');
-                            if ($sUnit === 'kg') {
-                                $multiplier = floatval($v->size_value);
-                            } elseif ($sUnit === 'gm' || $sUnit === 'grams' || $sUnit === 'gram') {
-                                $multiplier = floatval($v->size_value) / 1000;
-                            }
-                            
+                        if ($product && strtolower($product->unit_type) === 'kg') {
+                            $multiplier = $v->kg_size ?? 1.0;
                             $qty = $qty * $multiplier;
                             if ($multiplier > 0) {
                                 $price = $price / $multiplier;

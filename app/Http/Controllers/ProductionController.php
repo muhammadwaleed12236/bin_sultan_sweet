@@ -90,13 +90,8 @@ class ProductionController extends Controller
                     if ($variantId) {
                         $vModel = \App\Models\ProductVariant::find($variantId);
                         if ($vModel) {
-                            $kgSize = floatval($vModel->size_value);
-                            // Convert to grams if the variant size is in KG
-                            if ($vModel->size_unit === 'kg') {
-                                $qtyStock = ($kgSize * $qtyTyped * 1000);
-                            } else {
-                                $qtyStock = ($kgSize * $qtyTyped);
-                            }
+                            $kgSize = $vModel->kg_size;
+                            $qtyStock = ($kgSize * $qtyTyped * 1000);
                         }
                     } else {
                         $qtyStock = $qtyTyped * 1000; // Default conversion if no variant
@@ -238,12 +233,8 @@ class ProductionController extends Controller
                     if ($variantId) {
                         $vModel = \App\Models\ProductVariant::find($variantId);
                         if ($vModel) {
-                            $kgSize = floatval($vModel->size_value);
-                            if ($vModel->size_unit === 'kg') {
-                                $qtyStock = ($kgSize * $qtyTyped * 1000);
-                            } else {
-                                $qtyStock = ($kgSize * $qtyTyped);
-                            }
+                            $kgSize = $vModel->kg_size;
+                            $qtyStock = ($kgSize * $qtyTyped * 1000);
                         }
                     } else {
                         $qtyStock = $qtyTyped * 1000;
