@@ -473,5 +473,157 @@ Route::middleware('auth')->group(function () {
         }
         return response()->json(['status' => 'success', 'message' => "Successfully updated {$updated} variant sizes!"]);
     })->name('admin.sync_variant_sizes');
+
+    // Helper route to recalculate and sync stocks table based on initial stock and transactions
+    Route::get('/admin/recalculate-all-stocks', function() {
+        $products = \App\Models\Product::with(['variants', 'unit'])->get();
+        $codeToIdMap = [];
+        $nameToIdMap = [];
+        foreach ($products as $prod) {
+            $codeToIdMap[trim($prod->item_code)] = $prod->id;
+            $nameToIdMap[trim($prod->item_name)] = $prod->id;
+        }
+
+        $allSales = DB::table('sales')->whereNotNull('product')->select('product', 'qty', 'variant_id')->get();
+        $soldMap = [];
+        foreach ($allSales as $s) {
+            $pids = explode(',', $s->product);
+            $qtys = explode(',', $s->qty);
+            $vids = explode(',', $s->variant_id ?? '');
+            foreach ($pids as $idx => $pid) {
+                $pid = trim($pid); if ($pid === '') continue;
+                $vid = trim($vids[$idx] ?? '0'); if ($vid === '') $vid = '0';
+                $soldMap[$pid . '_' . $vid] = ($soldMap[$pid . '_' . $vid] ?? 0) + floatval($qtys[$idx] ?? 0);
+            }
+        }
+
+        $allReturns = DB::table('sales_returns')->whereNotNull('product')->select('product', 'qty', 'variant_id', 'product_code')->get();
+        $retMap = [];
+        foreach ($allReturns as $r) {
+            $pids = explode(',', $r->product);
+            $codes = explode(',', $r->product_code ?? '');
+            $qtys = explode(',', $r->qty);
+            $vids = explode(',', $r->variant_id ?? '');
+            foreach ($pids as $idx => $pid) {
+                $pid = trim($pid); if ($pid === '') continue;
+                $code = trim($codes[$idx] ?? '');
+                $qty = floatval($qtys[$idx] ?? 0);
+                if ($qty <= 0) continue;
+                $resolvedPid = null;
+                if (is_numeric($pid) && isset($codeToIdMap[$pid])) { $resolvedPid = intval($pid); }
+                elseif (!empty($code) && isset($codeToIdMap[$code])) { $resolvedPid = $codeToIdMap[$code]; }
+                elseif (!empty($pid) && isset($nameToIdMap[$pid])) { $resolvedPid = $nameToIdMap[$pid]; }
+                elseif (is_numeric($pid)) { $resolvedPid = intval($pid); }
+                if (!$resolvedPid) continue;
+                $vid = trim($vids[$idx] ?? '0'); if ($vid === '') $vid = '0';
+                $retMap[$resolvedPid . '_' . $vid] = ($retMap[$resolvedPid . '_' . $vid] ?? 0) + $qty;
+            }
+        }
+
+        $purchases = DB::table('purchase_items')->select('product_id', 'variant_id', DB::raw('SUM(qty) as total_qty'))->groupBy('product_id', 'variant_id')->get();
+        $mapP = []; foreach($purchases as $p) { $mapP[$p->product_id . '_' . ($p->variant_id ?? 0)] = (float)$p->total_qty; }
+
+        $productions = DB::table('production_entry_items')->select('product_id', 'variant_id', DB::raw('SUM(qty_stock) as total_qty'))->groupBy('product_id', 'variant_id')->get();
+        $mapProd = []; foreach($productions as $pd) { $mapProd[$pd->product_id . '_' . ($pd->variant_id ?? 0)] = (float)$pd->total_qty; }
+
+        $pReturns = DB::table('purchase_return_items')->select('product_id', 'variant_id', DB::raw('SUM(qty) as total_qty'))->groupBy('product_id', 'variant_id')->get();
+        $mapPR = []; foreach($pReturns as $pr) { $mapPR[$pr->product_id . '_' . ($pr->variant_id ?? 0)] = (float)$pr->total_qty; }
+
+        $adjustments = DB::table('stock_adjustment_items as sai')
+            ->join('stock_adjustments as sa', 'sa.id', '=', 'sai.adjustment_id')
+            ->select('sai.product_id', 'sai.variant_id', 'sa.type', DB::raw('SUM(sai.qty_stock) as total_qty'))
+            ->groupBy('sai.product_id', 'sai.variant_id', 'sa.type')->get();
+        $mapAdjInc = []; $mapAdjDec = [];
+        foreach ($adjustments as $adj) {
+            $k = $adj->product_id . '_' . ($adj->variant_id ?? 0);
+            if ($adj->type === 'increase') { $mapAdjInc[$k] = ($mapAdjInc[$k] ?? 0) + (float)$adj->total_qty; }
+            else { $mapAdjDec[$k] = ($mapAdjDec[$k] ?? 0) + (float)$adj->total_qty; }
+        }
+
+        $updatedCount = 0;
+        foreach ($products as $p) {
+            $is_kg = ($p->unit_type === 'kg');
+            if ($is_kg) {
+                $baseInitGrams = (float)($p->initial_stock ?? 0) * 1000;
+                $totProd = 0; foreach($mapProd as $k => $v) { if (str_starts_with($k, $p->id . '_')) $totProd += $v; }
+                $totPurch = (float)($mapP[$p->id . '_0'] ?? 0) * 1000;
+                $totPR = (float)($mapPR[$p->id . '_0'] ?? 0) * 1000;
+                $totSold = (float)($soldMap[$p->id . '_0'] ?? 0) * 1000;
+                $totRet = (float)($retMap[$p->id . '_0'] ?? 0) * 1000;
+                $totAdjInc = (float)($mapAdjInc[$p->id . '_0'] ?? 0);
+                $totAdjDec = (float)($mapAdjDec[$p->id . '_0'] ?? 0);
+
+                foreach ($p->variants as $v) {
+                    $vKey = $p->id . '_' . $v->id;
+                    $mul = $v->grams;
+                    $totPurch += ((float)($mapP[$vKey] ?? 0) * $mul);
+                    $totPR += ((float)($mapPR[$vKey] ?? 0) * $mul);
+                    $totSold += (((float)($soldMap[$vKey] ?? 0) + (float)($retMap[$vKey] ?? 0)) * $mul);
+                    $totRet += ((float)($retMap[$vKey] ?? 0) * $mul);
+                }
+
+                $calculatedStock = $baseInitGrams + $totProd + $totPurch + $totRet - $totSold - $totPR + $totAdjInc - $totAdjDec;
+                DB::table('stocks')->updateOrInsert(
+                    ['branch_id' => 1, 'warehouse_id' => 1, 'product_id' => $p->id, 'variant_id' => null],
+                    ['qty' => max(0, $calculatedStock), 'updated_at' => now()]
+                );
+                $updatedCount++;
+            } else {
+                if ($p->variants->count() > 0) {
+                    foreach ($p->variants as $v) {
+                        $key = $p->id . '_' . $v->id;
+                        $baseInit = (float)($v->stock_qty ?? 0);
+                        if ($baseInit == 0 && ($v->is_default || $p->variants->first()->id == $v->id)) {
+                            $baseInit = (float)($p->initial_stock ?? 0);
+                        }
+                        $totProd = (float)($mapProd[$key] ?? 0);
+                        $totPurch = (float)($mapP[$key] ?? 0);
+                        $totPR = (float)($mapPR[$key] ?? 0);
+                        $totSold = (float)($soldMap[$key] ?? 0);
+                        $totRet = (float)($retMap[$key] ?? 0);
+                        $totAdjInc = (float)($mapAdjInc[$key] ?? $mapAdjInc[$p->id . '_0'] ?? 0);
+                        $totAdjDec = (float)($mapAdjDec[$key] ?? $mapAdjDec[$p->id . '_0'] ?? 0);
+
+                        if ($v->is_default || $p->variants->first()->id == $v->id) {
+                            $totProd += (float)($mapProd[$p->id . '_0'] ?? 0);
+                            $totPurch += (float)($mapP[$p->id . '_0'] ?? 0);
+                            $totPR += (float)($mapPR[$p->id . '_0'] ?? 0);
+                            $totSold += (float)($soldMap[$p->id . '_0'] ?? 0);
+                            $totRet += (float)($retMap[$p->id . '_0'] ?? 0);
+                        }
+
+                        $calculatedStock = $baseInit + $totProd + $totPurch + $totRet - ($totSold + $totRet) - $totPR + $totAdjInc - $totAdjDec;
+                        DB::table('stocks')->updateOrInsert(
+                            ['branch_id' => 1, 'warehouse_id' => 1, 'product_id' => $p->id, 'variant_id' => $v->id],
+                            ['qty' => max(0, $calculatedStock), 'updated_at' => now()]
+                        );
+                        $updatedCount++;
+                    }
+                } else {
+                    $key = $p->id . '_0';
+                    $baseInit = (float)($p->initial_stock ?? 0);
+                    $totProd = (float)($mapProd[$key] ?? 0);
+                    $totPurch = (float)($mapP[$key] ?? 0);
+                    $totPR = (float)($mapPR[$key] ?? 0);
+                    $totSold = (float)($soldMap[$key] ?? 0);
+                    $totRet = (float)($retMap[$key] ?? 0);
+                    $totAdjInc = (float)($mapAdjInc[$key] ?? 0);
+                    $totAdjDec = (float)($mapAdjDec[$key] ?? 0);
+
+                    $calculatedStock = $baseInit + $totProd + $totPurch + $totRet - ($totSold + $totRet) - $totPR + $totAdjInc - $totAdjDec;
+                    DB::table('stocks')->updateOrInsert(
+                        ['branch_id' => 1, 'warehouse_id' => 1, 'product_id' => $p->id, 'variant_id' => null],
+                        ['qty' => max(0, $calculatedStock), 'updated_at' => now()]
+                    );
+                    $updatedCount++;
+                }
+            }
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Successfully recalculated and synced {$updatedCount} stock records with real initial stock and transactions!"
+        ]);
+    })->name('admin.recalculate_all_stocks');
 });
 require __DIR__ . '/auth.php';
