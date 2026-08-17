@@ -428,5 +428,50 @@ Route::middleware('auth')->group(function () {
     Route::post('/stock-adjustment/store', [StockAdjustmentController::class, 'store'])->name('stock-adjustment.store');
     Route::get('/stock-adjustment/{id}', [StockAdjustmentController::class, 'show'])->name('stock-adjustment.show');
     Route::get('/stock-adjustment-report', [StockAdjustmentController::class, 'report'])->name('stock-adjustment.report');
+
+    // Helper route to sync/repair variant size values on live database
+    Route::get('/admin/sync-variant-sizes', function() {
+        $variants = \App\Models\ProductVariant::all();
+        $updated = 0;
+        foreach ($variants as $v) {
+            $p = \App\Models\Product::find($v->product_id);
+            if (!$p) continue;
+            
+            $name = strtoupper(trim($v->variant_name . ' ' . $v->size_label));
+            $val = (float)$v->size_value;
+            $unit = strtolower(trim($v->size_unit ?? ''));
+
+            if ($val <= 0) {
+                if ($p->unit_type === 'kg') {
+                    if (preg_match('/(HALF\s*KG|1\/2\s*KG|0\.5\s*KG|500\s*GM|500\s*G)/i', $name)) {
+                        $val = 0.50; $unit = 'kg';
+                    } elseif (preg_match('/(1\s*PAO|ONE\s*PAO|250\s*GM|250\s*G|0\.25\s*KG)/i', $name)) {
+                        $val = 0.25; $unit = 'kg';
+                    } elseif (preg_match('/(1\.5\s*KG|1\s*AND\s*HALF\s*KG)/i', $name)) {
+                        $val = 1.50; $unit = 'kg';
+                    } elseif (preg_match('/(2\s*KG)/i', $name)) {
+                        $val = 2.00; $unit = 'kg';
+                    } elseif (preg_match('/(1\s*KG|ONE\s*KG)/i', $name) || $v->is_default) {
+                        $val = 1.00; $unit = 'kg';
+                    } else {
+                        $val = 1.00; $unit = 'kg';
+                    }
+                } elseif ($p->unit_type === 'pound') {
+                    if (preg_match('/2\s*POUND/i', $name)) {
+                        $val = 2.00; $unit = 'pound';
+                    } else {
+                        $val = 1.00; $unit = 'pound';
+                    }
+                } else {
+                    $val = 1.00; $unit = $p->unit_type ?: 'piece';
+                }
+                $v->size_value = $val;
+                $v->size_unit = $unit;
+                $v->save();
+                $updated++;
+            }
+        }
+        return response()->json(['status' => 'success', 'message' => "Successfully updated {$updated} variant sizes!"]);
+    })->name('admin.sync_variant_sizes');
 });
 require __DIR__ . '/auth.php';
