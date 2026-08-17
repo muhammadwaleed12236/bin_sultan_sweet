@@ -519,8 +519,52 @@ class ProductController extends Controller
                     if ($vId) {
                         // Update existing
                         $variant = ProductVariant::findOrFail($vId);
+                        $variantData['stock_qty'] = $vStock;
                         $variant->update($variantData);
-                        // Stock is preserved for existing variants
+
+                        if ($product->unit_type === 'kg') {
+                            $stockInGrams = $vStock > 0 ? ($vStock * 1000) : 0;
+                            $existingKgStock = DB::table('stocks')->where('product_id', $product->id)->whereNull('variant_id')->where('branch_id', 1)->where('warehouse_id', 1)->first();
+                            if ($existingKgStock) {
+                                DB::table('stocks')->where('id', $existingKgStock->id)->update([
+                                    'qty' => $stockInGrams,
+                                    'updated_at' => now(),
+                                ]);
+                            } else {
+                                DB::table('stocks')->insert([
+                                    'branch_id'    => 1,
+                                    'warehouse_id' => 1,
+                                    'product_id'   => $product->id,
+                                    'variant_id'   => null,
+                                    'qty'          => $stockInGrams,
+                                    'created_at'   => now(),
+                                    'updated_at'   => now(),
+                                ]);
+                            }
+                        } else {
+                            $existingStock = DB::table('stocks')
+                                ->where('product_id', $product->id)
+                                ->where('variant_id', $variant->id)
+                                ->where('branch_id', 1)
+                                ->where('warehouse_id', 1)
+                                ->first();
+                            if ($existingStock) {
+                                DB::table('stocks')->where('id', $existingStock->id)->update([
+                                    'qty' => $vStock,
+                                    'updated_at' => now(),
+                                ]);
+                            } else {
+                                DB::table('stocks')->insert([
+                                    'branch_id'    => 1,
+                                    'warehouse_id' => 1,
+                                    'product_id'   => $product->id,
+                                    'variant_id'   => $variant->id,
+                                    'qty'          => $vStock,
+                                    'created_at'   => now(),
+                                    'updated_at'   => now(),
+                                ]);
+                            }
+                        }
                     } else {
                         // Create new
                         $variantData['stock_qty'] = $vStock;
@@ -531,7 +575,10 @@ class ProductController extends Controller
                             $stockInGrams = $vStock > 0 ? ($vStock * 1000) : 0;
                             $existingKgStock = DB::table('stocks')->where('product_id', $product->id)->whereNull('variant_id')->where('branch_id', 1)->where('warehouse_id', 1)->first();
                             if ($existingKgStock) {
-                                DB::table('stocks')->where('id', $existingKgStock->id)->increment('qty', $stockInGrams);
+                                DB::table('stocks')->where('id', $existingKgStock->id)->update([
+                                    'qty' => $stockInGrams,
+                                    'updated_at' => now(),
+                                ]);
                             } else {
                                 DB::table('stocks')->insert([
                                     'branch_id'    => 1,
@@ -593,6 +640,10 @@ class ProductController extends Controller
 
         foreach ($product->variants as $v) {
             $v->setRelation('product', $product);
+            $stockRec = $v->stocks->first();
+            if ($stockRec) {
+                $v->stock_qty = $stockRec->qty;
+            }
         }
         $categories = Category::select('id', 'name')->get();
         $units = Unit::select('id', 'name')->get();

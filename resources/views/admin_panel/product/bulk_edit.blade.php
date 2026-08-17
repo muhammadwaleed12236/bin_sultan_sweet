@@ -208,7 +208,7 @@
               @if($product->unit_type == 'kg')
               <td><input type="number" class="be-fld" step="0.01" name="kg_stock[{{ $pid }}]" value="{{ $kgStockKg }}"><input type="hidden" name="variant_stock[{{ $pid }}][]" value="0"></td>
               @else
-              <td><input type="number" class="be-fld" step="0.01" name="variant_stock[{{ $pid }}][]" value="{{ $firstVar->stock_qty }}"></td>
+              <td><input type="number" class="be-fld" step="0.01" name="variant_stock[{{ $pid }}][]" value="{{ $firstVar->stocks->where('branch_id', 1)->where('warehouse_id', 1)->first()?->qty ?? $firstVar->stock_qty }}"></td>
               @endif
               <td style="text-align:center;"><input type="radio" name="variant_default[{{ $pid }}]" value="0" {{ $firstVar->is_default ? 'checked' : '' }}></td>
               @else
@@ -239,7 +239,7 @@
               @if($product->unit_type == 'kg')
               <td><input type="hidden" name="variant_stock[{{ $pid }}][]" value="0">—</td>
               @else
-              <td><input type="number" class="be-fld be-fld-sm" step="0.01" name="variant_stock[{{ $pid }}][]" value="{{ $v->stock_qty }}"></td>
+              <td><input type="number" class="be-fld be-fld-sm" step="0.01" name="variant_stock[{{ $pid }}][]" value="{{ $v->stocks->where('branch_id', 1)->where('warehouse_id', 1)->first()?->qty ?? $v->stock_qty }}"></td>
               @endif
               <td style="text-align:center;"><input type="radio" name="variant_default[{{ $pid }}]" value="{{ $loop->index + 1 }}" {{ $v->is_default ? 'checked' : '' }}></td>
             </tr>

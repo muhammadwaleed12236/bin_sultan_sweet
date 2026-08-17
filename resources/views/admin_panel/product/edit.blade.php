@@ -662,7 +662,7 @@ $(document).ready(function() {
                 <div class="col-md-1 variant-stock-col" style="display: ${unitType === 'kg' ? 'none' : 'block'}">
                     <label class="form-label small fw-bold">Stock</label>
                     <input type="number" name="variant_stock[]" class="form-control"
-                        placeholder="0" step="0.01" value="${data.stock_qty || 0}" ${data.id ? 'readonly' : ''}>
+                        placeholder="0" step="0.01" value="${data.stock_qty || 0}">
                 </div>
             </div>
         `;
