@@ -31,12 +31,20 @@ class SaleController extends Controller
                  $query->where('user_id', auth()->id());
             }
 
-            // 🔹 Apply Filters
+            // 🔹 Apply Filters (Date & 12hr Time Support)
             if ($request->filled('from_date')) {
-                $query->where('created_at', '>=', \Carbon\Carbon::parse($request->from_date)->startOfDay());
+                $fromDate = \Carbon\Carbon::parse($request->from_date);
+                if (strlen($request->from_date) <= 10) {
+                    $fromDate = $fromDate->startOfDay();
+                }
+                $query->where('created_at', '>=', $fromDate);
             }
             if ($request->filled('to_date')) {
-                $query->where('created_at', '<=', \Carbon\Carbon::parse($request->to_date)->endOfDay());
+                $toDate = \Carbon\Carbon::parse($request->to_date);
+                if (strlen($request->to_date) <= 10) {
+                    $toDate = $toDate->endOfDay();
+                }
+                $query->where('created_at', '<=', $toDate);
             }
             if ($request->filled('filter_user')) {
                  $query->where('user_id', $request->filter_user);
@@ -184,29 +192,32 @@ class SaleController extends Controller
                 $totalHtml = '';
                 foreach($totals as $t) $totalHtml .= '<div class="sale-num-row fw-semibold">Rs ' . $fmt($t) . '</div>';
 
-                // Status Badge
-                $statusBadge = '<span class="sale-status-badge status-sale"><i class="fa-solid fa-circle-check me-1"></i>Sale</span>';
-                if($sale->sale_status == 1) {
-                    $statusBadge = '<span class="sale-status-badge status-return"><i class="fa-solid fa-rotate-left me-1"></i>Return</span>';
+                // Check if fully returned
+                $isFullyReturned = ($sale->sale_status == 1 && (array_sum(array_map('floatval', $qtys)) <= 0 || (float)$sale->total_bill_amount <= 0 || (float)$sale->total_items <= 0));
+
+                // Status Badge (Check for Sale, Red RTN for Return)
+                if ($isFullyReturned) {
+                    $statusBadge = '<span class="sale-status-badge status-return"><i class="fa-solid fa-rotate-left me-1"></i>RTN</span>';
+                } elseif ($sale->sale_status == 1) {
+                    $statusBadge = '<span class="sale-status-badge status-return"><i class="fa-solid fa-rotate-left me-1"></i>Part-RTN</span>';
+                } else {
+                    $statusBadge = '<span class="sale-status-badge status-sale"><i class="fa-solid fa-check me-1"></i>Sale</span>';
                 }
 
-                // Action Buttons (Clean Wrapped Group with Tooltips & Dropdown)
+                // Action Buttons (Compact: Quick Bill + More Dropdown)
                 $actions = '<div class="d-inline-flex align-items-center gap-1 flex-nowrap">
-                    <a href="'.route('sales.recepit', $sale->id).'" class="btn btn-sm btn-dark py-1 px-2 fw-bold text-white text-nowrap" target="_blank" title="Print Thermal Bill" style="font-size: 11.5px; border-radius: 6px; text-decoration: none;">
+                    <a href="'.route('sales.recepit', $sale->id).'" class="btn btn-dark btn-sm py-1 px-2 fw-bold text-white text-nowrap" target="_blank" title="Thermal Print Receipt" style="font-size: 11.5px; border-radius: 6px; text-decoration: none;">
                         <i class="fa-solid fa-print me-1"></i>Bill
                     </a>
-                    <a href="'.route('sales.invoice', $sale->id).'" class="btn btn-sm py-1 px-2 fw-bold text-white text-nowrap" target="_blank" title="View Full Invoice" style="font-size: 11.5px; border-radius: 6px; background:#0284c7; border-color:#0284c7; text-decoration: none;">
-                        <i class="fa-solid fa-file-invoice me-1"></i>Invoice
-                    </a>
                     <div class="dropdown d-inline-block">
-                        <button class="btn btn-sm btn-outline-secondary py-1 px-2 dropdown-toggle fw-semibold" type="button" data-bs-toggle="dropdown" data-toggle="dropdown" aria-expanded="false" style="font-size: 11.5px; border-radius: 6px; background:#fff;">
+                        <button class="btn btn-sm btn-outline-secondary py-1 px-2 dropdown-toggle fw-bold text-dark text-nowrap" type="button" data-bs-toggle="dropdown" data-toggle="dropdown" aria-expanded="false" style="font-size: 11.5px; border-radius: 6px; background: #ffffff;">
                             More
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-1" style="font-size: 12.5px; min-width: 160px; z-index: 1050;">
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-1" style="font-size: 12.5px; min-width: 165px; z-index: 1050;">
+                            <li><a class="dropdown-item py-2 px-3 fw-medium" href="'.route('sales.invoice', $sale->id).'" target="_blank"><i class="fa-solid fa-file-invoice text-primary me-2"></i> Full Invoice</a></li>
                             <li><a class="dropdown-item py-2 px-3 fw-medium" href="'.route('sales.dc', $sale->id).'" target="_blank"><i class="fa-solid fa-truck-fast text-success me-2"></i> Delivery Challan</a></li>
-                            <li><a class="dropdown-item py-2 px-3 fw-medium" href="'.route('sales.edit', $sale->id).'"><i class="fa-solid fa-pen-to-square text-primary me-2"></i> Edit Sale</a></li>
-                            <li><hr class="dropdown-divider my-1"></li>
-                            <li><a class="dropdown-item py-2 px-3 fw-medium text-danger" href="'.route('sales.return.create', $sale->id).'"><i class="fa-solid fa-rotate-left text-danger me-2"></i> Sale Return</a></li>
+                            <li><a class="dropdown-item py-2 px-3 fw-medium" href="'.route('sales.edit', $sale->id).'"><i class="fa-solid fa-pen-to-square me-2" style="color:#6366f1;"></i> Edit Sale</a></li>
+                            ' . (!$isFullyReturned ? '<li><hr class="dropdown-divider my-1"></li><li><a class="dropdown-item py-2 px-3 fw-medium text-danger" href="'.route('sales.return.create', $sale->id).'"><i class="fa-solid fa-rotate-left text-danger me-2"></i> Sale Return</a></li>' : '') . '
                         </ul>
                     </div>
                 </div>';
@@ -223,19 +234,20 @@ class SaleController extends Controller
                 $totalBillAmount = '<span class="sale-total-highlight">Rs. ' . $fmt($sale->total_bill_amount) . '</span>';
 
                 $data[] = [
-                    $skip + $index + 1, // S.No
-                    $userBadge,
-                    $invoiceChip,
-                    $customerBadge,
-                    $productHtml,
-                    $qtyHtml,
-                    $priceHtml,
-                    $discHtml,
-                    $totalHtml,
-                    $totalBillAmount,
-                    $date,
-                    $statusBadge,
-                    $actions
+                    'DT_RowClass' => ($sale->sale_status == 1 ? 'sale-row-returned' : ''),
+                    0 => $skip + $index + 1, // S.No
+                    1 => $userBadge,
+                    2 => $invoiceChip,
+                    3 => $customerBadge,
+                    4 => $productHtml,
+                    5 => $qtyHtml,
+                    6 => $priceHtml,
+                    7 => $discHtml,
+                    8 => $totalHtml,
+                    9 => $totalBillAmount,
+                    10 => $date,
+                    11 => $statusBadge,
+                    12 => $actions
                 ];
             }
 
@@ -1360,6 +1372,13 @@ class SaleController extends Controller
     public function saleretun($id)
     {
         $sale = \App\Models\Sale::findOrFail($id);
+
+        // If sale is already 100% returned, redirect back
+        $rawQtys = array_map('floatval', explode(',', $sale->qty ?? ''));
+        if (array_sum($rawQtys) <= 0 || ((float)$sale->total_bill_amount <= 0 && $sale->sale_status == 1)) {
+            return redirect()->route('sale.index')->with('error', 'This invoice has already been 100% returned.');
+        }
+
         $customers = \App\Models\Customer::all();
 
         // Split comma-based fields from the sale row

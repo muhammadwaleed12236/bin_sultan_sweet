@@ -12,173 +12,165 @@
 
     .sale-page-wrapper {
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        padding: 10px 15px 30px;
+        padding: 12px 16px 30px;
         color: #1e293b;
     }
 
     /* Page Header */
     .sale-header-card {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        border-radius: 16px;
-        padding: 20px 24px;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+        border-radius: 14px;
+        padding: 18px 22px;
         color: #ffffff;
-        box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25);
-        margin-bottom: 24px;
+        box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.25);
+        margin-bottom: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
     .sale-header-title {
         font-weight: 800;
-        font-size: 22px;
-        letter-spacing: -0.5px;
+        font-size: 21px;
+        letter-spacing: -0.4px;
         margin: 0;
         display: flex;
         align-items: center;
         gap: 10px;
+        color: #ffffff;
+    }
+    .sale-header-title .header-icon-box {
+        width: 36px;
+        height: 36px;
+        background: rgba(99, 102, 241, 0.2);
+        border: 1px solid rgba(99, 102, 241, 0.4);
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #a5b4fc;
+        font-size: 16px;
     }
 
     .sale-header-subtitle {
-        font-size: 13px;
+        font-size: 12.5px;
         color: #94a3b8;
-        margin-top: 4px;
+        margin-top: 3px;
+        font-weight: 400;
     }
 
     /* Header Actions */
-    .sale-hdr-btn {
-        padding: 9px 16px;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 13px;
-        display: inline-flex;
+    .sale-hdr-btn-group {
+        display: flex;
         align-items: center;
         gap: 8px;
-        transition: all 0.25s ease;
-        text-decoration: none!important;
+        flex-wrap: wrap;
+    }
+
+    .sale-hdr-btn {
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 12.5px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+        text-decoration: none !important;
         border: none;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        white-space: nowrap;
     }
     .sale-hdr-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        filter: brightness(1.08);
     }
     .btn-add-sale {
         background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-        color: #ffffff!important;
+        color: #ffffff !important;
     }
     .btn-bookings {
         background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-        color: #ffffff!important;
+        color: #ffffff !important;
     }
     .btn-returns {
         background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        color: #ffffff!important;
+        color: #ffffff !important;
     }
     .btn-back-link {
         background: rgba(255, 255, 255, 0.12);
-        color: #ffffff!important;
-        backdrop-filter: blur(8px);
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(6px);
     }
     .btn-back-link:hover {
         background: rgba(255, 255, 255, 0.22);
     }
 
-    /* Stat Cards Grid */
-    .sale-stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 16px;
-        margin-bottom: 24px;
-    }
-
-    .sale-stat-card {
-        border-radius: 14px;
-        padding: 18px 20px;
-        color: #ffffff;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 8px 20px -4px rgba(0,0,0,0.12);
-        transition: transform 0.25s ease, box-shadow 0.25s ease;
-    }
-    .sale-stat-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 12px 25px -4px rgba(0,0,0,0.2);
-    }
-    .sale-stat-card .stat-icon {
-        position: absolute;
-        right: 16px;
-        bottom: 12px;
-        font-size: 42px;
-        opacity: 0.18;
-    }
-    .sale-stat-card .stat-label {
-        font-size: 12px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        opacity: 0.9;
-    }
-    .sale-stat-card .stat-value {
-        font-size: 24px;
-        font-weight: 800;
-        margin-top: 6px;
-        letter-spacing: -0.5px;
-    }
-
-    .card-opening { background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%); }
-    .card-today-sale { background: linear-gradient(135deg, #10b981 0%, #047857 100%); }
-    .card-expense { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); }
-    .card-net-cash { background: linear-gradient(135deg, #0f172a 0%, #334155 100%); }
-
     /* Filter Box */
     .sale-filter-box {
         background: #ffffff;
         border-radius: 14px;
-        padding: 20px;
+        padding: 18px 20px;
         border: 1px solid #e2e8f0;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
-        margin-bottom: 24px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+        margin-bottom: 20px;
     }
     .sale-filter-box .form-label {
-        font-weight: 600;
-        font-size: 12px;
+        font-weight: 700;
+        font-size: 11.5px;
         color: #475569;
         text-transform: uppercase;
-        letter-spacing: 0.3px;
-        margin-bottom: 6px;
+        letter-spacing: 0.4px;
+        margin-bottom: 5px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
     }
     .sale-filter-box .form-control {
         border-radius: 8px;
         border: 1px solid #cbd5e1;
         padding: 8px 12px;
         font-size: 13px;
+        height: 40px;
         transition: all 0.2s ease;
+        background-color: #fff;
     }
     .sale-filter-box .form-control:focus {
         border-color: #6366f1;
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
     }
     .btn-apply-filter {
         background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
-        color: #fff!important;
-        font-weight: 600;
+        color: #fff !important;
+        font-weight: 700;
         font-size: 13px;
-        padding: 9px 18px;
+        height: 40px;
         border-radius: 8px;
         border: none;
         transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
     }
     .btn-apply-filter:hover {
         opacity: 0.92;
         transform: translateY(-1px);
     }
     .btn-reset-filter {
-        background: #f1f5f9;
-        color: #475569!important;
-        font-weight: 600;
+        background: #f8fafc;
+        color: #475569 !important;
+        font-weight: 700;
         font-size: 13px;
-        padding: 9px 18px;
+        height: 40px;
+        padding: 0 16px;
         border-radius: 8px;
         border: 1px solid #cbd5e1;
         transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
     }
     .btn-reset-filter:hover {
         background: #e2e8f0;
@@ -187,10 +179,10 @@
     /* Table Container */
     .sale-table-card {
         background: #ffffff;
-        border-radius: 16px;
+        border-radius: 14px;
         border: 1px solid #e2e8f0;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-        padding: 18px 20px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+        padding: 16px 18px;
     }
 
     /* Styled Datatable */
@@ -208,7 +200,7 @@
         font-weight: 700 !important;
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
-        padding: 12px 10px !important;
+        padding: 11px 10px !important;
         border: none !important;
         vertical-align: middle !important;
         white-space: nowrap !important;
@@ -231,7 +223,7 @@
         opacity: 0.65 !important;
     }
     #productTable tbody td {
-        padding: 10px 12px !important;
+        padding: 9px 11px !important;
         font-size: 12.5px !important;
         vertical-align: middle !important;
         border-bottom: 1px solid #f1f5f9 !important;
@@ -249,19 +241,18 @@
         background: #eff6ff;
         color: #2563eb;
         font-weight: 700;
-        padding: 4px 8px;
+        padding: 3px 8px;
         border-radius: 6px;
         border: 1px solid #bfdbfe;
         font-size: 12px;
         display: inline-block;
         white-space: nowrap;
-        font-family: inherit;
     }
     .sale-user-badge {
         background: #f8fafc;
         color: #334155;
         font-weight: 600;
-        padding: 3px 8px;
+        padding: 3px 7px;
         border-radius: 6px;
         border: 1px solid #e2e8f0;
         font-size: 11.5px;
@@ -308,23 +299,33 @@
     .sale-status-badge {
         display: inline-flex;
         align-items: center;
-        padding: 3px 9px;
-        border-radius: 20px;
-        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-weight: 800;
         font-size: 11px;
         text-transform: uppercase;
-        letter-spacing: 0.4px;
+        letter-spacing: 0.5px;
         white-space: nowrap;
     }
     .status-sale {
-        background: #dcfce7;
-        color: #15803d;
-        border: 1px solid #86efac;
+        background: #ecfdf5;
+        color: #059669;
+        border: 1px solid #a7f3d0;
     }
     .status-return {
-        background: #fee2e2;
-        color: #b91c1c;
-        border: 1px solid #fca5a5;
+        background: #fef2f2;
+        color: #dc2626;
+        border: 1px solid #fecdd3;
+    }
+
+    /* Returned Row Highlight (Soft Light Red Background) */
+    tr.sale-row-returned td,
+    tr.sale-row-returned {
+        background-color: #fff1f2 !important;
+        border-bottom-color: #fecdd3 !important;
+    }
+    tr.sale-row-returned:hover td {
+        background-color: #ffe4e6 !important;
     }
 
     /* Custom Processing Indicator Style */
@@ -352,13 +353,62 @@
         border: 1px solid #cbd5e1 !important;
         padding: 6px 12px !important;
         font-size: 13px !important;
-        width: 260px !important;
+        width: 250px !important;
         outline: none;
         transition: border 0.2s ease;
     }
     .dataTables_filter input:focus {
         border-color: #4f46e5 !important;
         box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    }
+
+    /* Mobile Responsive Optimizations */
+    @media (max-width: 768px) {
+        .sale-page-wrapper {
+            padding: 8px 8px 24px;
+        }
+        .sale-header-card {
+            padding: 14px 16px;
+            margin-bottom: 14px;
+        }
+        .sale-header-title {
+            font-size: 17px;
+        }
+        .sale-header-subtitle {
+            font-size: 11.5px;
+        }
+        .sale-hdr-btn-group {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            margin-top: 4px;
+        }
+        .sale-hdr-btn {
+            padding: 8px 10px;
+            font-size: 12px;
+            justify-content: center;
+        }
+        .sale-filter-box {
+            padding: 14px 14px;
+            margin-bottom: 14px;
+        }
+        .sale-table-card {
+            padding: 12px 10px;
+            border-radius: 10px;
+        }
+        div.dataTables_wrapper div.dataTables_length,
+        div.dataTables_wrapper div.dataTables_filter {
+            text-align: left !important;
+            float: none !important;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+        div.dataTables_wrapper div.dataTables_filter input {
+            width: 100% !important;
+            margin-left: 0 !important;
+            margin-top: 4px;
+        }
     }
 </style>
 
@@ -368,14 +418,14 @@
     <div class="sale-header-card d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <div>
             <h1 class="sale-header-title">
-                <i class="fa-solid fa-cash-register text-indigo-400" style="color: #818cf8;"></i>
+                <span class="header-icon-box"><i class="fa-solid fa-cash-register"></i></span>
                 Sales Ledger & History
             </h1>
             <div class="sale-header-subtitle">
                 Overview of POS transactions, customer invoices, and sales returns
             </div>
         </div>
-        <div class="d-flex flex-wrap align-items-center gap-2">
+        <div class="sale-hdr-btn-group">
             <a href="{{ route('sale.add') }}" class="sale-hdr-btn btn-add-sale">
                 <i class="fa-solid fa-circle-plus"></i> New Sale
             </a>
@@ -394,17 +444,17 @@
     {{-- Filter Card --}}
     <div class="sale-filter-box">
         <div class="row g-3 align-items-end">
-            <div class="col-md-3">
-                <label class="form-label"><i class="fa-solid fa-calendar-day me-1 text-primary"></i> From Date</label>
-                <input type="date" id="filterFrom" class="form-control">
+            <div class="col-12 col-sm-6 col-md-3">
+                <label class="form-label"><i class="fa-solid fa-calendar-day text-primary"></i> From Date & Time (12h)</label>
+                <input type="text" id="filterFrom" class="form-control" placeholder="Select Date & Time (AM/PM)">
             </div>
-            <div class="col-md-3">
-                <label class="form-label"><i class="fa-solid fa-calendar-check me-1 text-primary"></i> To Date</label>
-                <input type="date" id="filterTo" class="form-control">
+            <div class="col-12 col-sm-6 col-md-3">
+                <label class="form-label"><i class="fa-solid fa-calendar-check text-primary"></i> To Date & Time (12h)</label>
+                <input type="text" id="filterTo" class="form-control" placeholder="Select Date & Time (AM/PM)">
             </div>
             @if(auth()->id() === 1 || auth()->user()->hasRole('Admin') || auth()->user()->hasRole('super-admin'))
-            <div class="col-md-3">
-                <label class="form-label"><i class="fa-solid fa-user-tie me-1 text-primary"></i> Cashier / User</label>
+            <div class="col-12 col-sm-6 col-md-3">
+                <label class="form-label"><i class="fa-solid fa-user-tie text-primary"></i> Cashier / User</label>
                 <select id="filterUser" class="form-control">
                     <option value="">All Cashiers & Users</option>
                     @foreach(\App\Models\User::all() as $u)
@@ -413,12 +463,12 @@
                 </select>
             </div>
             @endif
-            <div class="col-md-3 d-flex gap-2">
+            <div class="col-12 col-sm-6 col-md-3 d-flex gap-2">
                 <button id="btnFilter" class="btn-apply-filter w-100">
-                    <i class="fa-solid fa-filter me-1"></i> Filter
+                    <i class="fa-solid fa-filter"></i> Filter
                 </button>
                 <button id="btnReset" class="btn-reset-filter">
-                    <i class="fa-solid fa-rotate-right me-1"></i> Reset
+                    <i class="fa-solid fa-rotate-right"></i> Reset
                 </button>
             </div>
         </div>
@@ -457,8 +507,35 @@
 @endsection
 
 @section('scripts')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
 <script>
     $(document).ready(function() {
+        // Initialize 12-hour Date & Time Picker
+        var fpFrom = flatpickr("#filterFrom", {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i:S",
+            altInput: true,
+            altFormat: "d-M-Y h:i K", // 12-hour format with AM/PM (e.g. 17-Aug-2026 08:30 AM)
+            time_24hr: false,
+            allowInput: true,
+            defaultHour: 0,
+            defaultMinute: 0
+        });
+
+        var fpTo = flatpickr("#filterTo", {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i:S",
+            altInput: true,
+            altFormat: "d-M-Y h:i K", // 12-hour format with AM/PM (e.g. 17-Aug-2026 11:59 PM)
+            time_24hr: false,
+            allowInput: true,
+            defaultHour: 23,
+            defaultMinute: 59
+        });
+
         var table = $('#productTable').DataTable({
             processing: true,
             serverSide: true,
@@ -485,7 +562,14 @@
                 { data: 11 }, // Status
                 { data: 12, orderable: false, searchable: false } // Action
             ],
-            responsive: true,
+            responsive: false,
+            autoWidth: false,
+            createdRow: function(row, data, dataIndex) {
+                // If row status is Return
+                if (data[11] && data[11].indexOf('status-return') !== -1) {
+                    $(row).addClass('sale-row-returned');
+                }
+            },
             pageLength: 10,
             lengthMenu: [
                 [10, 25, 50, 100],
@@ -506,8 +590,8 @@
         });
 
         $('#btnReset').on('click', function() {
-            $('#filterFrom').val('');
-            $('#filterTo').val('');
+            fpFrom.clear();
+            fpTo.clear();
             $('#filterUser').val('');
             table.draw();
         });

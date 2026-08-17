@@ -89,11 +89,11 @@ class ReportingController extends Controller
             $nameToIdMap[trim($prod->item_name)] = $prod->id;
         }
 
-        // 3. IN-PERIOD TRANSACTIONS: transactions within [startDate, endDate]
+        // 3. IN-PERIOD TRANSACTIONS: transactions within [startDT, endDT]
         $purchasesQuery = DB::table('purchase_items')
             ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->whereIn('purchase_items.product_id', $productIds)
-            ->whereBetween('purchases.purchase_date', [$startDate, $endDate]);
+            ->whereBetween('purchases.created_at', [$startDT, $endDT]);
         if ($resetTime) {
             $purchasesQuery->where('purchases.created_at', '>=', $resetTime);
         }
@@ -104,8 +104,7 @@ class ReportingController extends Controller
         $productionsQuery = DB::table('production_entry_items')
             ->join('production_entries', 'production_entries.id', '=', 'production_entry_items.production_entry_id')
             ->whereIn('production_entry_items.product_id', $productIds)
-            ->whereDate('production_entries.production_date', '>=', $startDate)
-            ->whereDate('production_entries.production_date', '<=', $endDate);
+            ->whereBetween('production_entries.created_at', [$startDT, $endDT]);
         if ($resetTime) {
             $productionsQuery->where('production_entries.created_at', '>=', $resetTime);
         }
@@ -118,7 +117,7 @@ class ReportingController extends Controller
         $purchaseReturnsQuery = DB::table('purchase_return_items')
             ->join('purchase_returns', 'purchase_returns.id', '=', 'purchase_return_items.purchase_return_id')
             ->whereIn('purchase_return_items.product_id', $productIds)
-            ->whereBetween('purchase_returns.return_date', [$startDate, $endDate]);
+            ->whereBetween('purchase_returns.created_at', [$startDT, $endDT]);
         if ($resetTime) {
             $purchaseReturnsQuery->where('purchase_returns.created_at', '>=', $resetTime);
         }
@@ -134,7 +133,7 @@ class ReportingController extends Controller
         $mapProd = []; foreach($productions  as $pd) { $k = $pd->product_id . '_' . ($pd->variant_id ?? 0); $mapProd[$k] = ($mapProd[$k] ?? 0) + $pd->total_qty; }
         $mapPR   = []; foreach($purchaseReturns as $pr) { $k = $pr->product_id . '_' . ($pr->variant_id ?? 0); $mapPR[$k] = ($mapPR[$k] ?? 0) + $pr->total_qty; }
 
-        // Sales processing (by product and variant) with DATE filter
+        // Sales processing (by product and variant) with DATE & TIME filter
         $hasVariantIdInSales = \Illuminate\Support\Facades\Schema::hasColumn('sales', 'variant_id');
         $allSalesQuery = DB::table('sales')->whereBetween('created_at', [$startDT, $endDT])->whereNotNull('product')->select('product', 'qty');
         if ($hasVariantIdInSales) {
@@ -214,7 +213,7 @@ class ReportingController extends Controller
         $adjInRangeQuery = DB::table('stock_adjustment_items as sai')
             ->join('stock_adjustments as sa', 'sa.id', '=', 'sai.adjustment_id')
             ->whereIn('sai.product_id', $productIds)
-            ->whereBetween('sa.adjustment_date', [$startDate, $endDate]);
+            ->whereBetween('sa.created_at', [$startDT, $endDT]);
         if ($resetTime) {
             $adjInRangeQuery->where('sa.created_at', '>=', $resetTime);
         }
@@ -246,7 +245,7 @@ class ReportingController extends Controller
             $afterPurchasesQuery = DB::table('purchase_items')
                 ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
                 ->whereIn('purchase_items.product_id', $productIds)
-                ->where('purchases.purchase_date', '>', $endDate);
+                ->where('purchases.created_at', '>', $endDT);
             if ($resetTime) { $afterPurchasesQuery->where('purchases.created_at', '>=', $resetTime); }
             $afterPurchases = $afterPurchasesQuery->select('purchase_items.product_id', 'purchase_items.variant_id', DB::raw('SUM(purchase_items.qty) as total_qty'))
                 ->groupBy('purchase_items.product_id', 'purchase_items.variant_id')->get();
@@ -255,7 +254,7 @@ class ReportingController extends Controller
             $afterProductionsQuery = DB::table('production_entry_items')
                 ->join('production_entries', 'production_entries.id', '=', 'production_entry_items.production_entry_id')
                 ->whereIn('production_entry_items.product_id', $productIds)
-                ->whereDate('production_entries.production_date', '>', $endDate);
+                ->where('production_entries.created_at', '>', $endDT);
             if ($resetTime) { $afterProductionsQuery->where('production_entries.created_at', '>=', $resetTime); }
             $afterProductions = $afterProductionsQuery->select('production_entry_items.product_id', 'production_entry_items.variant_id', DB::raw('SUM(production_entry_items.qty_stock) as total_qty'))
                 ->groupBy('production_entry_items.product_id', 'production_entry_items.variant_id')->get();
@@ -264,7 +263,7 @@ class ReportingController extends Controller
             $afterPRQuery = DB::table('purchase_return_items')
                 ->join('purchase_returns', 'purchase_returns.id', '=', 'purchase_return_items.purchase_return_id')
                 ->whereIn('purchase_return_items.product_id', $productIds)
-                ->where('purchase_returns.return_date', '>', $endDate);
+                ->where('purchase_returns.created_at', '>', $endDT);
             if ($resetTime) { $afterPRQuery->where('purchase_returns.created_at', '>=', $resetTime); }
             $afterPR = $afterPRQuery->select('purchase_return_items.product_id', $hasVariantIdInPRItems ? 'purchase_return_items.variant_id' : DB::raw('0 as variant_id'), DB::raw('SUM(purchase_return_items.qty) as total_qty'))
                 ->groupBy('purchase_return_items.product_id', $hasVariantIdInPRItems ? 'purchase_return_items.variant_id' : DB::raw('0'))->get();
@@ -316,7 +315,7 @@ class ReportingController extends Controller
             $afterAdjQuery = DB::table('stock_adjustment_items as sai')
                 ->join('stock_adjustments as sa', 'sa.id', '=', 'sai.adjustment_id')
                 ->whereIn('sai.product_id', $productIds)
-                ->where('sa.adjustment_date', '>', $endDate);
+                ->where('sa.created_at', '>', $endDT);
             if ($resetTime) { $afterAdjQuery->where('sa.created_at', '>=', $resetTime); }
             $afterAdj = $afterAdjQuery->select('sai.product_id', 'sa.type', DB::raw('SUM(sai.qty_stock) as total_qty'))
                 ->groupBy('sai.product_id', 'sa.type')->get();
@@ -393,23 +392,31 @@ class ReportingController extends Controller
                     $netMovementsInPeriod = $purchased + $produced + $sReturn - $sold - $pReturn + $adjInc - $adjDec;
                     $openingStock = $closingStock - $netMovementsInPeriod;
 
+                    $priceVal = (float)($v->price ?: $p->price ?: $v->wholesale_price ?: $p->wholesale_price ?: 0);
                     $vLabel = $v->size_label ?: $v->variant_name;
                     $rows[] = [
-                        'item_code'       => $code,
-                        'item_name'       => $displayName . ($vLabel ? ' (' . $vLabel . ')' : ''),
-                        'is_kg'           => false,
-                        'initial_stock'   => $openingStock,
-                        'produced'        => $produced,
-                        'purchased'       => $purchased,
-                        'purchase_return' => $pReturn,
-                        'adj_increase'    => $adjInc,
-                        'adj_decrease'    => $adjDec,
-                        'sold'            => $sold,
-                        'sale_return'     => $sReturn,
-                        'balance'         => $closingStock,
-                        'unit'            => $p->unit?->name ?? 'PC',
+                        'item_code'              => $code,
+                        'item_name'              => $displayName . ($vLabel ? ' (' . $vLabel . ')' : ''),
+                        'is_kg'                  => false,
+                        'price'                  => $priceVal,
+                        'initial_stock'          => $openingStock,
+                        'initial_amount'         => $openingStock * $priceVal,
+                        'produced'               => $produced,
+                        'produced_amount'        => $produced * $priceVal,
+                        'purchased'              => $purchased,
+                        'purchased_amount'       => $purchased * $priceVal,
+                        'purchase_return'        => $pReturn,
+                        'purchase_return_amount' => $pReturn * $priceVal,
+                        'adj_increase'           => $adjInc,
+                        'adj_decrease'           => $adjDec,
+                        'sold'                   => $sold,
+                        'sold_amount'            => $sold * $priceVal,
+                        'sale_return'            => $sReturn,
+                        'sale_return_amount'     => $sReturn * $priceVal,
+                        'balance'                => $closingStock,
+                        'balance_amount'         => $closingStock * $priceVal,
+                        'unit'                   => $p->unit?->name ?? 'PC',
                     ];
-                    $priceVal = (float)($v->wholesale_price ?: $p->wholesale_price ?: $v->price ?: $p->price);
                     $grandTotalValue += $closingStock * $priceVal;
                 }
             } else {
@@ -517,25 +524,34 @@ class ReportingController extends Controller
                 $netMovementsInPeriod = $purchased + $produced + $sReturn - $sold - $pReturn + $adjInc - $adjDec;
                 $openingStock = $closingStock - $netMovementsInPeriod;
 
+                $priceVal = (float)($p->price ?: $p->wholesale_price ?: 0);
+                $valuationFactor = $is_kg ? 0.001 : 1.0;
+
                 $rows[] = [
-                    'item_code'       => $code,
-                    'item_name'       => $displayName,
-                    'is_kg'           => $is_kg,
-                    'initial_stock'   => $openingStock,
-                    'produced'        => $produced,
-                    'purchased'       => $purchased,
-                    'purchase_return' => $pReturn,
-                    'adj_increase'    => $adjInc,
-                    'adj_decrease'    => $adjDec,
-                    'sold'            => $sold,
-                    'sale_return'     => $sReturn,
-                    'balance'         => $closingStock,
-                    'unit'            => $p->unit?->name ?? ($is_kg ? 'KG' : 'PC'),
+                    'item_code'              => $code,
+                    'item_name'              => $displayName,
+                    'is_kg'                  => $is_kg,
+                    'price'                  => $priceVal,
+                    'initial_stock'          => $openingStock,
+                    'initial_amount'         => ($openingStock * $valuationFactor) * $priceVal,
+                    'produced'               => $produced,
+                    'produced_amount'        => ($produced * $valuationFactor) * $priceVal,
+                    'purchased'              => $purchased,
+                    'purchased_amount'       => ($purchased * $valuationFactor) * $priceVal,
+                    'purchase_return'        => $pReturn,
+                    'purchase_return_amount' => ($pReturn * $valuationFactor) * $priceVal,
+                    'adj_increase'           => $adjInc,
+                    'adj_decrease'           => $adjDec,
+                    'sold'                   => $sold,
+                    'sold_amount'            => ($sold * $valuationFactor) * $priceVal,
+                    'sale_return'            => $sReturn,
+                    'sale_return_amount'     => ($sReturn * $valuationFactor) * $priceVal,
+                    'balance'                => $closingStock,
+                    'balance_amount'         => ($closingStock * $valuationFactor) * $priceVal,
+                    'unit'                   => $p->unit?->name ?? ($is_kg ? 'KG' : 'PC'),
                 ];
                 
-                $valuationQty = $is_kg ? ($closingStock / 1000) : $closingStock;
-                $priceVal = (float)($p->wholesale_price ?: $p->price);
-                $grandTotalValue += $valuationQty * $priceVal;
+                $grandTotalValue += ($closingStock * $valuationFactor) * $priceVal;
             }
         }
 
@@ -545,10 +561,41 @@ class ReportingController extends Controller
             }));
         }
 
+        $totalInitQty     = 0;
+        $totalInitVal     = 0;
+        $totalProducedQty = 0;
+        $totalProducedVal = 0;
+        $totalSoldQty     = 0;
+        $totalSoldVal     = 0;
+        $totalPurchQty    = 0;
+        $totalPurchVal    = 0;
+        $totalStockQty    = 0;
+
+        foreach ($rows as $r) {
+            $totalInitQty     += (float)($r['initial_stock'] ?? 0);
+            $totalInitVal     += (float)($r['initial_amount'] ?? 0);
+            $totalProducedQty += (float)($r['produced'] ?? 0);
+            $totalProducedVal += (float)($r['produced_amount'] ?? 0);
+            $totalSoldQty     += (float)($r['sold'] ?? 0);
+            $totalSoldVal     += (float)($r['sold_amount'] ?? 0);
+            $totalPurchQty    += (float)($r['purchased'] ?? 0);
+            $totalPurchVal    += (float)($r['purchased_amount'] ?? 0);
+            $totalStockQty    += (float)($r['balance'] ?? 0);
+        }
+
         return response()->json([
-            'data'        => $rows,
-            'grand_total' => $grandTotalValue,
-            'total'       => count($rows),
+            'data'                   => $rows,
+            'grand_total'            => $grandTotalValue,
+            'total'                  => count($rows),
+            'total_initial_qty'      => $totalInitQty,
+            'total_initial_amount'   => $totalInitVal,
+            'total_produced_qty'     => $totalProducedQty,
+            'total_produced_amount'  => $totalProducedVal,
+            'total_sold_qty'         => $totalSoldQty,
+            'total_sold_amount'      => $totalSoldVal,
+            'total_purchased_qty'    => $totalPurchQty,
+            'total_purchased_amount' => $totalPurchVal,
+            'total_stock_qty'        => $totalStockQty,
         ]);
     }
 
