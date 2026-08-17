@@ -444,9 +444,12 @@
 
     <form id="resetStockForm" action="{{ route('products.reset_stock') }}" method="POST" style="display:none;">@csrf</form>
 
-    {{-- ═══ SEARCH ═══ --}}
-    <div class="mb-3">
+    {{-- ═══ SEARCH & FILTERS ═══ --}}
+    <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
       <input type="text" id="productSearch" class="pc-search" placeholder="Search by code, name, barcode, brand..." style="width:100%;max-width:420px;">
+      <button type="button" id="hasStockToggleBtn" class="pc-btn pc-btn-outline pc-btn-sm" onclick="toggleProductHasStock()" style="padding:.5rem .9rem;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+        <i class="bi bi-box-seam"></i> <span>Has Stock</span>
+      </button>
     </div>
 
     {{-- ═══ TABLE CARD ═══ --}}
@@ -643,6 +646,24 @@
 <script>
 $(document).ready(function() {
   let searchTimer = null;
+  let hasStockOnly = false;
+
+  window.toggleProductHasStock = function() {
+    hasStockOnly = !hasStockOnly;
+    const btn = $('#hasStockToggleBtn');
+    if (hasStockOnly) {
+      btn.removeClass('pc-btn-outline')
+         .addClass('pc-btn-primary')
+         .css({'background':'#2b7fff','color':'#fff','border-color':'#2b7fff'})
+         .html('<i class="bi bi-check-circle-fill"></i> <span>Has Stock (Active)</span>');
+    } else {
+      btn.removeClass('pc-btn-primary')
+         .addClass('pc-btn-outline')
+         .css({'background':'','color':'','border-color':''})
+         .html('<i class="bi bi-box-seam"></i> <span>Has Stock</span>');
+    }
+    fetchProducts($('#productSearch').val());
+  };
 
   $('#productSearch').on('keyup', function() {
     clearTimeout(searchTimer);
@@ -700,10 +721,10 @@ $(document).ready(function() {
     if (this.checked) {
       selectAllPagesActive = true;
       var search = $('#productSearch').val() || '';
-      // Fetch all product IDs matching current search
+      // Fetch all product IDs matching current search & stock filter
       $.ajax({
         url: "{{ route('products.all-ids') }}",
-        data: { search: search },
+        data: { search: search, has_stock: hasStockOnly ? 1 : 0 },
         success: function(ids) {
           allSelectedIds = new Set(ids.map(String));
           // Check all visible checkboxes too
@@ -737,7 +758,10 @@ $(document).ready(function() {
     if (!url) url = "{{ route('product') }}";
     $.ajax({
       url: url,
-      data: { search: search },
+      data: { 
+        search: search,
+        has_stock: hasStockOnly ? 1 : 0
+      },
       success: function(res) {
         $('#productTable').html($(res).find('#productTable').html());
         $('#paginationLinks').html($(res).find('#paginationLinks').html());
@@ -745,6 +769,15 @@ $(document).ready(function() {
       }
     });
   }
+
+  // Handle AJAX pagination clicks
+  $(document).on('click', '#paginationLinks a', function(e) {
+    e.preventDefault();
+    var url = $(this).attr('href');
+    if (url) {
+      fetchProducts($('#productSearch').val(), url);
+    }
+  });
 
   // Bulk Edit button
   $('#bulkEditBtn').click(function() {

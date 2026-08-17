@@ -82,6 +82,11 @@ class ProductController extends Controller
                         });
                 });
             })
+            ->when($request->boolean('has_stock') || $request->has_stock == '1', function ($query) {
+                $query->whereHas('stocks', function($q) {
+                    $q->where('branch_id', 1)->where('warehouse_id', 1)->where('qty', '>', 0);
+                });
+            })
             ->orderBy('item_code', 'desc')
             ->paginate(100);
 
@@ -606,7 +611,13 @@ class ProductController extends Controller
                         $c->where('name', 'like', "%{$search}%");
                     });
             });
-        })->pluck('id');
+        })
+        ->when($request->boolean('has_stock') || $request->has_stock == '1', function ($query) {
+            $query->whereHas('stocks', function($q) {
+                $q->where('branch_id', 1)->where('warehouse_id', 1)->where('qty', '>', 0);
+            });
+        })
+        ->pluck('id');
         return response()->json($ids);
     }
 

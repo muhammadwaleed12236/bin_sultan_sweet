@@ -1,59 +1,81 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::table('stock_transfers', function (Blueprint $table) {
-            // Check if foreign key exists before dropping
-            $foreignKeys = $this->getForeignKeys('stock_transfers');
-            if (in_array('stock_transfers_product_id_foreign', $foreignKeys)) {
-                 $table->dropForeign(['product_id']);
-            }
+        /*
+         * Remove any foreign key attached to product_id
+         */
+        $foreignKeys = DB::select("
+            SELECT
+                CONSTRAINT_NAME
+            FROM information_schema.KEY_COLUMN_USAGE
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'stock_transfers'
+              AND COLUMN_NAME = 'product_id'
+              AND REFERENCED_TABLE_NAME IS NOT NULL
+        ");
 
-            // Check if index exists before dropping
-            $indexes = $this->getIndexes('stock_transfers');
-            if (in_array('stock_transfers_product_id_index', $indexes) || in_array('product_id', $indexes)) {
-                try {
-                    $table->dropIndex(['product_id']);
-                } catch (\Exception $e) {}
-            }
+        foreach ($foreignKeys as $foreignKey) {
+            DB::statement(
+                "ALTER TABLE `stock_transfers` DROP FOREIGN KEY `{$foreignKey->CONSTRAINT_NAME}`"
+            );
+        }
 
-            // Change product_id and quantity to longText/json
-            $table->longText('product_id')->change();
-            $table->longText('quantity')->change();
-        });
+        /*
+         * Remove indexes on product_id.
+         * LONGTEXT cannot be indexed without a prefix length.
+         */
+        $indexes = DB::select("
+            SELECT
+                DISTINCT INDEX_NAME
+            FROM information_schema.STATISTICS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'stock_transfers'
+              AND COLUMN_NAME = 'product_id'
+              AND INDEX_NAME != 'PRIMARY'
+        ");
+
+        foreach ($indexes as $index) {
+            DB::statement(
+                "ALTER TABLE `stock_transfers` DROP INDEX `{$index->INDEX_NAME}`"
+            );
+        }
+
+        /*
+         * Convert product_id and quantity to LONGTEXT
+         */
+        DB::statement("
+            ALTER TABLE `stock_transfers`
+            MODIFY `product_id` LONGTEXT NOT NULL,
+            MODIFY `quantity` LONGTEXT NOT NULL
+        ");
     }
 
-    private function getForeignKeys($table)
-    {
-        $conn = Schema::getConnection()->getDoctrineSchemaManager();
-        return array_keys($conn->listTableForeignKeys($table));
-    }
-
-    private function getIndexes($table)
-    {
-        $conn = Schema::getConnection()->getDoctrineSchemaManager();
-        return array_keys($conn->listTableIndexes($table));
-    }
-
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::table('stock_transfers', function (Blueprint $table) {
-            $table->unsignedBigInteger('product_id')->change();
-            $table->foreign('product_id')->references('id')->on('products')->onDelete('cascade');
-            $table->integer('quantity')->change();
-        });
+        /*
+         * Convert columns back
+         */
+        DB::statement("
+            ALTER TABLE `stock_transfers`
+            MODIFY `product_id` BIGINT UNSIGNED NOT NULL,
+            MODIFY `quantity` INT NOT NULL
+        ");
+
+        /*
+         * Restore foreign key
+         */
+        DB::statement("
+            ALTER TABLE `stock_transfers`
+            ADD CONSTRAINT `stock_transfers_product_id_foreign`
+            FOREIGN KEY (`product_id`)
+            REFERENCES `products` (`id`)
+            ON DELETE CASCADE
+        ");
     }
 };

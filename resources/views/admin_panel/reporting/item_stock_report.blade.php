@@ -375,10 +375,10 @@
 
       {{-- Summary Cards --}}
       <div class="pc-sum-grid">
-        <div class="pc-sum-card"><div class="lbl">Total Products</div><div class="val" id="cTotal">–</div></div>
-        <div class="pc-sum-card green"><div class="lbl">In Stock</div><div class="val" id="cInStock">–</div></div>
-        <div class="pc-sum-card orange"><div class="lbl">Low Stock (≤5)</div><div class="val" id="cLow">–</div></div>
-        <div class="pc-sum-card red"><div class="lbl">Out of Stock</div><div class="val" id="cOut">–</div></div>
+        <div class="pc-sum-card" onclick="filterReportCard('all')" style="cursor:pointer;" title="Click to show all products"><div class="lbl">Total Products</div><div class="val" id="cTotal">–</div></div>
+        <div class="pc-sum-card green" onclick="filterReportCard('ok')" style="cursor:pointer;" title="Click to show in stock products"><div class="lbl">In Stock</div><div class="val" id="cInStock">–</div></div>
+        <div class="pc-sum-card orange" onclick="filterReportCard('low')" style="cursor:pointer;" title="Click to show low stock products"><div class="lbl">Low Stock (≤5)</div><div class="val" id="cLow">–</div></div>
+        <div class="pc-sum-card red" onclick="filterReportCard('out')" style="cursor:pointer;" title="Click to show out of stock products"><div class="lbl">Out of Stock</div><div class="val" id="cOut">–</div></div>
         <div class="pc-sum-card"><div class="lbl">Total Sold</div><div class="val" id="cSold">–</div></div>
         <div class="pc-sum-card"><div class="lbl">Total Purchased</div><div class="val" id="cPurch">–</div></div>
         <div class="pc-sum-card purple"><div class="lbl">Inventory Value</div><div class="val" id="cValue">–</div></div>
@@ -412,6 +412,9 @@
           <input type="time" class="pc-fld" id="end_time" value="23:59">
         </div>
         <button class="pc-btn pc-btn-primary" onclick="fetchReport()"><i class="bi bi-search"></i>Search</button>
+        <button type="button" id="btnReportHasStock" class="pc-btn pc-btn-outline" onclick="toggleReportHasStock()" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+          <i class="bi bi-box-seam"></i> <span>Has Stock</span>
+        </button>
       </div>
 
       {{-- Table Card --}}
@@ -463,10 +466,10 @@
     {{-- ═══ SIZE PANEL ═══ --}}
     <div id="panelSize" style="display:none">
       <div class="pc-sum-grid">
-        <div class="pc-sum-card"><div class="lbl">Products w/ Sizes</div><div class="val" id="vTotal">–</div></div>
-        <div class="pc-sum-card green"><div class="lbl">Sizes In Stock</div><div class="val" id="vOk">–</div></div>
-        <div class="pc-sum-card orange"><div class="lbl">Sizes Low</div><div class="val" id="vLow">–</div></div>
-        <div class="pc-sum-card red"><div class="lbl">Sizes Out</div><div class="val" id="vOut">–</div></div>
+        <div class="pc-sum-card" onclick="filterVarCard('all')" style="cursor:pointer;"><div class="lbl">Products w/ Sizes</div><div class="val" id="vTotal">–</div></div>
+        <div class="pc-sum-card green" onclick="filterVarCard('ok')" style="cursor:pointer;"><div class="lbl">Sizes In Stock</div><div class="val" id="vOk">–</div></div>
+        <div class="pc-sum-card orange" onclick="filterVarCard('low')" style="cursor:pointer;"><div class="lbl">Sizes Low</div><div class="val" id="vLow">–</div></div>
+        <div class="pc-sum-card red" onclick="filterVarCard('out')" style="cursor:pointer;"><div class="lbl">Sizes Out</div><div class="val" id="vOut">–</div></div>
         <div class="pc-sum-card"><div class="lbl">Total Size Units</div><div class="val" id="vUnits">–</div></div>
       </div>
 
@@ -481,6 +484,9 @@
           </select>
         </div>
         <button class="pc-btn pc-btn-primary" onclick="fetchVariants()"><i class="bi bi-search"></i>Search</button>
+        <button type="button" id="btnVarHasStock" class="pc-btn pc-btn-outline" onclick="toggleVarHasStock()" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+          <i class="bi bi-box-seam"></i> <span>Has Stock</span>
+        </button>
       </div>
 
       <div class="pc-card">
@@ -548,6 +554,47 @@ function printClosing() {
 
 /* ═══════ ITEM STOCK ═══════ */
 let allRows = [];
+let reportHasStockOnly = false;
+let reportStatusFilter = 'all'; // 'all', 'ok', 'low', 'out', 'has_stock'
+
+window.toggleReportHasStock = function() {
+    reportHasStockOnly = !reportHasStockOnly;
+    if (reportHasStockOnly) {
+        reportStatusFilter = 'has_stock';
+    } else {
+        reportStatusFilter = 'all';
+    }
+    updateReportHasStockBtn();
+    applyFilter();
+};
+
+function updateReportHasStockBtn() {
+    const btn = $('#btnReportHasStock');
+    if (reportHasStockOnly || reportStatusFilter === 'ok' || reportStatusFilter === 'has_stock') {
+        btn.removeClass('pc-btn-outline')
+           .addClass('pc-btn-primary')
+           .css({'background':'#2b7fff','color':'#fff','border-color':'#2b7fff'})
+           .html('<i class="bi bi-check-circle-fill"></i> <span>Has Stock (Active)</span>');
+    } else {
+        btn.removeClass('pc-btn-primary')
+           .addClass('pc-btn-outline')
+           .css({'background':'','color':'','border-color':''})
+           .html('<i class="bi bi-box-seam"></i> <span>Has Stock</span>');
+    }
+}
+
+window.filterReportCard = function(status) {
+    reportStatusFilter = status;
+    if (status === 'ok') {
+        reportHasStockOnly = true;
+    } else if (status === 'all') {
+        reportHasStockOnly = false;
+    } else {
+        reportHasStockOnly = false;
+    }
+    updateReportHasStockBtn();
+    applyFilter();
+};
 
 function fetchReport() {
     const productIds = getProductIds();
@@ -577,7 +624,24 @@ function fetchReport() {
 
 function applyFilter() {
     const q = (document.getElementById('liveSearch').value || '').toLowerCase().trim();
-    const vis = q ? allRows.filter(r => (r.item_name||'').toLowerCase().includes(q) || (r.item_code||'').toLowerCase().includes(q)) : allRows;
+    let vis = allRows;
+
+    if (reportHasStockOnly || reportStatusFilter === 'has_stock') {
+        vis = vis.filter(r => (parseFloat(r.balance) || 0) > 0);
+    } else if (reportStatusFilter === 'ok') {
+        vis = vis.filter(r => (parseFloat(r.balance) || 0) > 5);
+    } else if (reportStatusFilter === 'low') {
+        vis = vis.filter(r => {
+            const b = parseFloat(r.balance) || 0;
+            return b > 0 && b <= 5;
+        });
+    } else if (reportStatusFilter === 'out') {
+        vis = vis.filter(r => (parseFloat(r.balance) || 0) <= 0);
+    }
+
+    if (q) {
+        vis = vis.filter(r => (r.item_name||'').toLowerCase().includes(q) || (r.item_code||'').toLowerCase().includes(q));
+    }
     renderRows(vis);
 }
 
@@ -667,6 +731,47 @@ function clearFooter() {
 
 /* ═══════ VARIANT STOCK ═══════ */
 let allVarRows = [];
+let varHasStockOnly = false;
+let varStatusFilter = 'all'; // 'all', 'ok', 'low', 'out', 'has_stock'
+
+window.toggleVarHasStock = function() {
+    varHasStockOnly = !varHasStockOnly;
+    if (varHasStockOnly) {
+        varStatusFilter = 'has_stock';
+    } else {
+        varStatusFilter = 'all';
+    }
+    updateVarHasStockBtn();
+    applyVarFilter();
+};
+
+function updateVarHasStockBtn() {
+    const btn = $('#btnVarHasStock');
+    if (varHasStockOnly || varStatusFilter === 'ok' || varStatusFilter === 'has_stock') {
+        btn.removeClass('pc-btn-outline')
+           .addClass('pc-btn-primary')
+           .css({'background':'#2b7fff','color':'#fff','border-color':'#2b7fff'})
+           .html('<i class="bi bi-check-circle-fill"></i> <span>Has Stock (Active)</span>');
+    } else {
+        btn.removeClass('pc-btn-primary')
+           .addClass('pc-btn-outline')
+           .css({'background':'','color':'','border-color':''})
+           .html('<i class="bi bi-box-seam"></i> <span>Has Stock</span>');
+    }
+}
+
+window.filterVarCard = function(status) {
+    varStatusFilter = status;
+    if (status === 'ok') {
+        varHasStockOnly = true;
+    } else if (status === 'all') {
+        varHasStockOnly = false;
+    } else {
+        varHasStockOnly = false;
+    }
+    updateVarHasStockBtn();
+    applyVarFilter();
+};
 
 function fetchVariants() {
     const productId = $('#v_product_id').val() || 'all';
@@ -691,9 +796,21 @@ function fetchVariants() {
 
 function applyVarFilter() {
     const q = (document.getElementById('vLiveSearch').value || '').toLowerCase().trim();
-    const vis = q ? allVarRows.filter(function(r) {
-        return (r.product_name||'').toLowerCase().includes(q) || (r.item_code||'').toLowerCase().includes(q) || r.sizes.some(function(s) { return (s.label||'').toLowerCase().includes(q); });
-    }) : allVarRows;
+    let vis = allVarRows;
+
+    if (varHasStockOnly || varStatusFilter === 'has_stock') {
+        vis = vis.filter(r => (parseFloat(r.total_stock) || 0) > 0 || (r.sizes && r.sizes.some(s => (parseFloat(s.stock_qty) || 0) > 0)));
+    } else if (varStatusFilter === 'ok') {
+        vis = vis.filter(r => r.sizes && r.sizes.some(s => s.status === 'ok'));
+    } else if (varStatusFilter === 'low') {
+        vis = vis.filter(r => r.sizes && r.sizes.some(s => s.status === 'low'));
+    } else if (varStatusFilter === 'out') {
+        vis = vis.filter(r => r.sizes && r.sizes.every(s => s.status === 'out'));
+    }
+
+    if (q) {
+        vis = vis.filter(r => (r.product_name||'').toLowerCase().includes(q) || (r.item_code||'').toLowerCase().includes(q) || (r.sizes && r.sizes.some(s => (s.label||'').toLowerCase().includes(q))));
+    }
     renderVariants(vis);
 }
 

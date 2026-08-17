@@ -2,10 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\Unit;
-
 
 class UnitSeeder extends Seeder
 {
@@ -14,10 +12,20 @@ class UnitSeeder extends Seeder
      */
     public function run(): void
     {
-         $units = ['Piece', 'Dozen', 'Meter', 'Kilogram'];
+        $units = [
+            'Kg (Kilogram)',
+            'Gram (g)',
+            'Box (Dabba)',
+            'Piece (Pcs)',
+            'Dozen (Darjan)',
+            'Pack',
+            'Litre (L)',
+        ];
 
         foreach ($units as $unit) {
             Unit::firstOrCreate(['name' => $unit]);
         }
+
+        $this->command->info('✅ Units seeded successfully.');
     }
 }
