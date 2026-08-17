@@ -189,41 +189,59 @@
         background: #ffffff;
         border-radius: 16px;
         border: 1px solid #e2e8f0;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
-        padding: 20px;
-        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        padding: 18px 20px;
     }
 
     /* Styled Datatable */
     #productTable {
-        border-collapse: separate;
-        border-spacing: 0;
-        width: 100%!important;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+        width: 100% !important;
     }
-    #productTable thead th {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        color: #f8fafc;
-        font-size: 12px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.6px;
-        padding: 14px 12px;
-        border: none;
+    #productTable thead th,
+    .table#productTable thead th,
+    table.dataTable thead th {
+        background: #0f172a !important;
+        color: #ffffff !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        padding: 12px 10px !important;
+        border: none !important;
+        vertical-align: middle !important;
+        white-space: nowrap !important;
     }
     #productTable thead th:first-child {
-        border-top-left-radius: 10px;
+        border-top-left-radius: 8px !important;
+        border-bottom-left-radius: 8px !important;
     }
     #productTable thead th:last-child {
-        border-top-right-radius: 10px;
+        border-top-right-radius: 8px !important;
+        border-bottom-right-radius: 8px !important;
+    }
+    table.dataTable thead>tr>th.sorting:before,
+    table.dataTable thead>tr>th.sorting:after,
+    table.dataTable thead>tr>th.sorting_asc:before,
+    table.dataTable thead>tr>th.sorting_asc:after,
+    table.dataTable thead>tr>th.sorting_desc:before,
+    table.dataTable thead>tr>th.sorting_desc:after {
+        color: #ffffff !important;
+        opacity: 0.65 !important;
     }
     #productTable tbody td {
-        padding: 12px;
-        font-size: 13px;
-        vertical-align: middle;
-        border-bottom: 1px solid #f1f5f9;
+        padding: 10px 12px !important;
+        font-size: 12.5px !important;
+        vertical-align: middle !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        color: #334155;
     }
     #productTable tbody tr:hover td {
-        background-color: #f8fafc;
+        background-color: #f8fafc !important;
+    }
+    #productTable tbody tr:last-child td {
+        border-bottom: none !important;
     }
 
     /* Content Badges inside Table */
@@ -231,63 +249,72 @@
         background: #eff6ff;
         color: #2563eb;
         font-weight: 700;
-        padding: 4px 10px;
+        padding: 4px 8px;
         border-radius: 6px;
         border: 1px solid #bfdbfe;
         font-size: 12px;
         display: inline-block;
-        font-family: monospace;
+        white-space: nowrap;
+        font-family: inherit;
     }
     .sale-user-badge {
         background: #f8fafc;
         color: #334155;
         font-weight: 600;
-        padding: 4px 8px;
+        padding: 3px 8px;
         border-radius: 6px;
         border: 1px solid #e2e8f0;
-        font-size: 12px;
+        font-size: 11.5px;
+        display: inline-block;
+        white-space: nowrap;
     }
     .sale-customer-name {
         font-weight: 600;
-        color: #0f172a;
+        color: #1e293b;
+        font-size: 12.5px;
+        white-space: nowrap;
     }
     .sale-prod-row {
         font-size: 12px;
         color: #334155;
-        line-height: 1.5;
+        line-height: 1.4;
         padding: 1px 0;
+        font-weight: 500;
     }
     .sale-num-row {
         font-size: 12px;
         color: #475569;
-        line-height: 1.5;
+        line-height: 1.4;
     }
     .sale-total-highlight {
         font-weight: 800;
-        font-size: 14px;
+        font-size: 13.5px;
         color: #059669;
         background: #ecfdf5;
-        padding: 4px 10px;
+        padding: 3px 9px;
         border-radius: 6px;
         border: 1px solid #a7f3d0;
         display: inline-block;
+        white-space: nowrap;
     }
     .sale-date-badge {
-        font-size: 12px;
+        font-size: 11.5px;
         color: #64748b;
         white-space: nowrap;
+        font-weight: 500;
     }
 
     /* Status Badges */
     .sale-status-badge {
         display: inline-flex;
         align-items: center;
-        padding: 4px 10px;
+        padding: 3px 9px;
         border-radius: 20px;
         font-weight: 700;
         font-size: 11px;
         text-transform: uppercase;
         letter-spacing: 0.4px;
+        white-space: nowrap;
     }
     .status-sale {
         background: #dcfce7;
@@ -299,34 +326,6 @@
         color: #b91c1c;
         border: 1px solid #fca5a5;
     }
-
-    /* Action Buttons Group */
-    .sale-action-group {
-        display: flex;
-        gap: 4px;
-        flex-wrap: wrap;
-    }
-    .sale-action-btn {
-        padding: 5px 9px;
-        border-radius: 6px;
-        font-size: 11px;
-        font-weight: 600;
-        text-decoration: none!important;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        transition: all 0.2s ease;
-        border: none;
-    }
-    .sale-action-btn:hover {
-        transform: translateY(-1px);
-        opacity: 0.9;
-    }
-    .btn-print { background: #334155; color: #ffffff!important; }
-    .btn-invoice { background: #0284c7; color: #ffffff!important; }
-    .btn-dc { background: #059669; color: #ffffff!important; }
-    .btn-edit { background: #4f46e5; color: #ffffff!important; }
-    .btn-return { background: #d97706; color: #ffffff!important; }
 
     /* Custom Processing Indicator Style */
     div.dataTables_wrapper div.dataTables_processing {

@@ -951,7 +951,7 @@
             <small class="text-white-50" id="materialModalSubtitle" style="font-size: 0.75rem;">Add one or multiple raw materials. Press <strong>Enter</strong> to quickly add next row.</small>
           </div>
         </div>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white btn-modal-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
       </div>
       <form action="{{ route('raw_materials.material.store') }}" method="POST" id="materialForm">
         @csrf
@@ -1036,7 +1036,7 @@
 
         </div>
         <div class="modal-footer bg-light py-2">
-          <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-secondary btn-sm px-3 btn-modal-close" data-bs-dismiss="modal" data-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-primary btn-sm px-4 fw-bold" id="materialSubmitBtn">
             <i class="fa fa-save me-1"></i> Save Material(s)
           </button>
@@ -1052,7 +1052,7 @@
     <div class="modal-content border-0 shadow">
       <div class="modal-header bg-dark text-white">
         <h5 class="modal-title fw-bold" id="purchaseModalTitle"><i class="fa fa-shopping-cart me-2"></i>New Raw Material Purchase</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white btn-modal-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
       </div>
       <form action="{{ route('raw_materials.purchase.store') }}" method="POST" id="purchaseForm">
         @csrf
@@ -1156,7 +1156,7 @@
 
         </div>
         <div class="modal-footer bg-light">
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-secondary btn-sm btn-modal-close" data-bs-dismiss="modal" data-dismiss="modal">Close</button>
           <button type="submit" class="btn btn-success btn-sm px-4 fw-bold" id="purchaseSubmitBtn"><i class="fa fa-check-circle me-1"></i> Save Purchase Order</button>
         </div>
       </form>
@@ -1178,7 +1178,7 @@
             <small class="text-white-50" id="outModalSub" style="font-size: .75rem;">Issue raw materials to production/kitchen with cost tracking. Press <strong>Enter</strong> for next row.</small>
           </div>
         </div>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white btn-modal-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
       </div>
       <form action="{{ route('raw_materials.out.store') }}" method="POST" id="outForm">
         @csrf
@@ -1257,7 +1257,7 @@
 
         </div>
         <div class="modal-footer bg-light py-2">
-          <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-secondary btn-sm px-3 btn-modal-close" data-bs-dismiss="modal" data-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-primary btn-sm px-4 fw-bold" id="outSubmitBtn"><i class="fa fa-check me-1"></i> Issue Material Out & Save DC</button>
         </div>
       </form>
@@ -1277,7 +1277,7 @@
             <small class="text-white-50" id="qv_out_date">Date</small>
           </div>
         </div>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white btn-modal-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body p-3">
         <div class="row g-2 mb-3 p-2 bg-light border rounded">
@@ -1329,7 +1329,7 @@
         </div>
       </div>
       <div class="modal-footer bg-light py-2">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary btn-sm btn-modal-close" data-bs-dismiss="modal" data-dismiss="modal">Close</button>
         <a href="#" id="qv_print_link" class="btn btn-dark btn-sm fw-bold px-3" target="_blank"><i class="bi bi-printer me-1"></i> Print Delivery Challan</a>
       </div>
     </div>
@@ -1342,7 +1342,7 @@
     <div class="modal-content border-0 shadow">
       <div class="modal-header bg-dark text-white">
         <h5 class="modal-title fw-bold" id="vendorModalTitle"><i class="fa fa-user-plus me-2"></i>Add Material Vendor</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white btn-modal-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
       </div>
       <form action="{{ route('raw_materials.vendor.store') }}" method="POST">
         @csrf
@@ -1373,7 +1373,7 @@
           </div>
         </div>
         <div class="modal-footer bg-light">
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-secondary btn-sm btn-modal-close" data-bs-dismiss="modal" data-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-primary btn-sm px-4">Save Vendor</button>
         </div>
       </form>
@@ -1393,7 +1393,7 @@
             <small class="text-white-50" id="vendorPaymentModalSub" style="font-size: .75rem;">Pay vendor and adjust closing balance</small>
           </div>
         </div>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white btn-modal-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
       </div>
       <form action="{{ route('raw_materials.vendor_payment.store') }}" method="POST" id="vendorPaymentForm">
         @csrf
@@ -1423,7 +1423,7 @@
           </div>
         </div>
         <div class="modal-footer bg-light py-2">
-          <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-secondary btn-sm px-3 btn-modal-close" data-bs-dismiss="modal" data-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-success btn-sm px-4 fw-bold"><i class="fa fa-check me-1"></i> Submit Payment</button>
         </div>
       </form>
@@ -1463,6 +1463,31 @@ $(document).ready(function() {
       window.history.replaceState({ path: newUrl }, '', newUrl);
     }
     $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust().responsive.recalc();
+  });
+
+  // Universal Modal Dismiss / Close / Cancel Handler (handles both Bootstrap 4, Bootstrap 5, & direct DOM)
+  $(document).on('click', '.btn-modal-close, [data-bs-dismiss="modal"], [data-dismiss="modal"], .modal .btn-close, .modal .close', function(e) {
+    e.preventDefault();
+    const $modal = $(this).closest('.modal');
+    if ($modal.length) {
+      try {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+          const bsModal = bootstrap.Modal.getInstance($modal[0]) || bootstrap.Modal.getOrCreateInstance($modal[0]);
+          if (bsModal) bsModal.hide();
+        }
+      } catch(err) {}
+
+      try {
+        $modal.modal('hide');
+      } catch(err) {}
+
+      // Robust DOM Fallback
+      setTimeout(function() {
+        $modal.removeClass('show').css('display', 'none').attr('aria-hidden', 'true');
+        $('.modal-backdrop').remove();
+        $('body').removeClass('modal-open').css({ 'overflow': '', 'padding-right': '' });
+      }, 100);
+    }
   });
 
   // Material edit modal populate
@@ -1640,7 +1665,7 @@ $(document).ready(function() {
     $('#qv_foot_qty').text(totalQty.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
     $('#qv_foot_amount').text('Rs ' + totalAmt.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
     
-    let printUrl = "{{ url('raw-materials/out/dc') }}/" + data.id;
+    let printUrl = "{{ url('raw-materials/out') }}/" + data.id + "/dc";
     $('#qv_print_link').attr('href', printUrl);
 
     new bootstrap.Modal(document.getElementById('outQuickViewModal')).show();

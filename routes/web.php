@@ -232,6 +232,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/raw-materials/out/store', [RawMaterialController::class, 'storeOut'])->name('raw_materials.out.store')->middleware('permission:Raw Material Out|Raw Materials');
     Route::get('/raw-materials/out/delete/{id}', [RawMaterialController::class, 'deleteOut'])->name('raw_materials.out.delete')->middleware('permission:Raw Material Out|Raw Materials');
     Route::get('/raw-materials/out/{id}/dc', [RawMaterialController::class, 'outChallan'])->name('raw_materials.out.dc')->middleware('permission:Raw Materials');
+    Route::get('/raw-materials/out/dc/{id}', [RawMaterialController::class, 'outChallan'])->middleware('permission:Raw Materials');
 
     Route::get('/search-products', [ProductController::class, 'searchProducts'])->name('search-products');
     Route::get('/purchase/{id}/invoice', [PurchaseController::class, 'Invoice'])->name('purchase.invoice');

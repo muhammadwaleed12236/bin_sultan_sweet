@@ -18,10 +18,10 @@
       padding: 0;
       background: #fff;
       color: #000;
-      font-family: 'Arial', sans-serif; /* Switching to Arial for better density on some printers */
-      font-size: 14px; /* Slightly larger */
-      line-height: 1.3;
-      font-weight: 700; /* Bold by default for better visibility */
+      font-family: 'Arial', sans-serif;
+      font-size: 16px; /* Larger, crisp readable base font */
+      line-height: 1.35;
+      font-weight: 700; /* Bold by default for thermal printer visibility */
     }
 
     /* Action Buttons - Hidden in Print */
@@ -53,11 +53,11 @@
     /* Receipt Container */
     .receipt-container {
       width: 100%;
-      max-width: 80mm; /* Limit on screen, but adapt to smaller screens/printers */
+      max-width: 80mm;
       margin: 0 auto;
       padding: 2mm;
       background: #fff;
-      overflow: hidden; /* Prevent horizontal overflow */
+      overflow: hidden;
     }
 
     .center {
@@ -69,7 +69,7 @@
     }
 
     .line {
-      border-top: 2px dashed #000; /* Thicker dashed line */
+      border-top: 2px dashed #000;
       margin: 6px 0;
     }
 
@@ -93,53 +93,69 @@
 
     /* Header Section */
     .store-name {
-      font-size: 22px;
+      font-size: 25px;
       font-weight: 900;
-      margin: 5px 0;
+      margin: 4px 0;
       text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     .store-info {
-      font-size: 13px;
+      font-size: 14.5px;
       margin: 2px 0;
-      font-weight: 800;
+      font-weight: 700;
     }
 
     .receipt-title {
-      font-size: 18px;
+      font-size: 19px;
       font-weight: 900;
-      margin: 10px 0;
+      margin: 8px 0;
       border-top: 2px solid #000;
       border-bottom: 2px solid #000;
       padding: 5px 0;
       text-transform: uppercase;
+      letter-spacing: 0.8px;
     }
 
     /* Metadata Table */
+    .meta-table {
+      font-size: 15px;
+    }
+
     .meta-table th {
       text-align: left;
       font-weight: 900;
-      width: 45%;
+      width: 44%;
+      padding: 2px 0;
     }
 
     .meta-table td {
       text-align: left;
       font-weight: 800;
+      padding: 2px 0;
     }
 
     /* Items Table */
+    .items-table {
+      font-size: 14.5px;
+      table-layout: fixed;
+      width: 100%;
+    }
+
     .items-table thead th {
       border-top: 2px solid #000;
       border-bottom: 2px solid #000;
-      font-size: 14px;
-      text-align: left;
+      font-size: 13.5px;
       font-weight: 900;
+      padding: 4px 1px;
+      white-space: nowrap !important;
     }
 
-    .items-table .col-amount { text-align: right; white-space: nowrap; padding-left: 5px; }
-    .items-table .col-price { text-align: right; white-space: nowrap; padding-left: 5px; }
-    .items-table .col-qty { text-align: right; white-space: nowrap; padding-left: 5px; }
-    .items-table th, .items-table td { padding: 3px 2px; }
+    .items-table .col-item { width: 38%; text-align: left; }
+    .items-table .col-price { width: 17%; text-align: right; white-space: nowrap !important; }
+    .items-table .col-qty { width: 21%; text-align: right; white-space: nowrap !important; }
+    .items-table .col-amount { width: 24%; text-align: right; white-space: nowrap !important; }
+    .items-table th, .items-table td { padding: 3px 1px; }
 
     .category-row {
       text-align: center;
@@ -151,45 +167,53 @@
     }
 
     .item-row td {
-      font-size: 14px;
-      padding-top: 5px;
+      font-size: 15px;
+      padding-top: 4px;
+      padding-bottom: 3px;
     }
 
     /* Totals Section */
+    .totals-table {
+      font-size: 15.5px;
+    }
+
     .totals-table th {
       text-align: left;
       font-weight: 800;
+      padding: 3px 0;
     }
 
     .totals-table td {
       text-align: right;
       font-weight: 900;
+      padding: 3px 0;
     }
 
     .totals-table .grand-total-row th,
     .totals-table .grand-total-row td {
       font-weight: 900;
-      font-size: 18px;
-      border-top: 2px solid #000;
-      border-bottom: 2px solid #000;
+      font-size: 21px;
+      border-top: 2.5px solid #000;
+      border-bottom: 2.5px solid #000;
       padding: 6px 0;
     }
 
     .payment-table {
       margin-top: 10px;
       border: 2px solid #000;
+      font-size: 15.5px;
     }
 
     .payment-table th, .payment-table td {
-      padding: 5px 10px;
+      padding: 5px 8px;
       border: 1px solid #000;
       font-weight: 900;
     }
 
     .footer {
-      margin-top: 15px;
-      font-size: 13px;
-      font-weight: 800;
+      margin-top: 14px;
+      font-size: 14px;
+      font-weight: 700;
     }
 
     @media print {
@@ -208,13 +232,14 @@
         width: 100%;
         height: auto;
         -webkit-print-color-adjust: exact;
+        font-size: 13.5px !important;
       }
 
       .receipt-container {
-        width: 74mm !important; /* Printable area for 80mm paper is ~72-76mm */
+        width: 76mm !important; /* Printable area for 80mm paper */
         max-width: 100% !important;
         margin: 0 auto !important;
-        padding: 2mm !important;
+        padding: 1mm 2mm !important;
         page-break-inside: avoid;
         page-break-after: avoid;
       }
@@ -231,19 +256,30 @@
 
       th, td {
         white-space: normal !important;
-        padding: 1px !important;
+        padding: 2px 1px !important;
       }
       
       body {
-        font-size: 10px;
+        font-size: 13.5px !important;
       }
-      .store-name { font-size: 14px; }
-      .store-info { font-size: 10px; }
-      .receipt-title { font-size: 12px; }
-      .items-table thead th { font-size: 10px; }
-      .item-row td { font-size: 10px; }
+      .store-name { font-size: 20px !important; }
+      .store-info { font-size: 13px !important; }
+      .receipt-title { font-size: 16px !important; padding: 4px 0 !important; }
+      .meta-table { font-size: 13px !important; }
+      .meta-table th, .meta-table td { font-size: 13px !important; padding: 2px 0 !important; }
+      .items-table thead th { font-size: 12.5px !important; padding: 3px 1px !important; white-space: nowrap !important; }
+      .items-table .col-item { width: 38% !important; text-align: left !important; }
+      .items-table .col-price { width: 17% !important; text-align: right !important; white-space: nowrap !important; }
+      .items-table .col-qty { width: 21% !important; text-align: right !important; white-space: nowrap !important; }
+      .items-table .col-amount { width: 24% !important; text-align: right !important; white-space: nowrap !important; }
+      .item-row td { font-size: 12.5px !important; padding: 3px 1px !important; }
+      .totals-table { font-size: 13.5px !important; }
+      .totals-table th, .totals-table td { font-size: 13.5px !important; }
       .totals-table .grand-total-row th,
-      .totals-table .grand-total-row td { font-size: 12px; }
+      .totals-table .grand-total-row td { font-size: 17px !important; padding: 5px 0 !important; }
+      .payment-table { font-size: 13.5px !important; }
+      .payment-table th, .payment-table td { font-size: 13.5px !important; padding: 3px 6px !important; }
+      .footer { font-size: 12px !important; }
     }
 
     .page-break {
@@ -359,10 +395,10 @@
     <table class="items-table">
       <thead>
         <tr>
-          <th style="width: 40%;">Item Name</th>
-          <th class="col-price" style="width: 20%;">Price</th>
-          <th class="col-qty" style="width: 20%;">Qty/Wt</th>
-          <th class="col-amount" style="width: 20%;">Amount</th>
+          <th class="col-item">Item Name</th>
+          <th class="col-price">Price</th>
+          <th class="col-qty">Qty/Wt</th>
+          <th class="col-amount">Amount</th>
         </tr>
       </thead>
       <tbody>
@@ -386,6 +422,9 @@
                     $displayUnit = 'GRAM';
                 } else {
                     $displayQty = (float)number_format($displayQty, 3);
+                    if (strtoupper($displayUnit) === 'PIECE' || strtoupper($displayUnit) === 'PC') {
+                        $displayUnit = 'PC';
+                    }
                 }
 
                 // Get custom label from 'color' field (stored as JSON array in Sale model)
@@ -414,15 +453,15 @@
                 }
             @endphp
             <tr class="item-row">
-              <td style="width: 40%;" class="bold">
+              <td class="col-item bold">
                   {{ $cleanItemName }}
                   @if(isset($item['discount']) && $item['discount'] > 0)
-                      <br><small style="font-weight:normal;font-size:12px;">Disc: Rs {{ number_format($item['discount'], 0) }}</small>
+                      <br><small style="font-weight:normal;font-size:11px;">Disc: Rs {{ number_format($item['discount'], 0) }}</small>
                   @endif
               </td>
-              <td class="col-price" style="width: 20%;">{{ number_format($item['price'], 0) }}</td>
-              <td class="col-qty" style="width: 20%;">{{ $displayQty }} {{ $displayUnit }}</td>
-              <td class="col-amount" style="width: 20%; font-weight: bold;">{{ number_format($item['total'], 0) }}</td>
+              <td class="col-price">{{ number_format($item['price'], 0) }}</td>
+              <td class="col-qty">{{ $displayQty }} {{ $displayUnit }}</td>
+              <td class="col-amount bold">{{ number_format($item['total'], 0) }}</td>
             </tr>
           @endforeach
         @endforeach

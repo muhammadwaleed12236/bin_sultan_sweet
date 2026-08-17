@@ -6,16 +6,17 @@
 <title>Receipt</title>
 <style>
     body {
-        font-family: 'Courier New', monospace;
-        font-size: 12px;
+        font-family: 'Arial', sans-serif;
+        font-size: 15px;
         color: #000;
         background: #fff;
         margin: 0;
         padding: 0;
+        font-weight: 700;
     }
     .receipt-container {
         width: 100%;
-        max-width: 340px;
+        max-width: 80mm;
         margin: auto;
         padding: 10px;
     }
@@ -26,32 +27,33 @@
         font-weight: bold;
     }
     .line {
-        border-top: 1px dashed #000;
-        margin: 4px 0;
+        border-top: 2px dashed #000;
+        margin: 5px 0;
     }
     table {
         width: 100%;
         border-collapse: collapse;
     }
     th, td {
-        padding: 2px 0;
+        padding: 3px 0;
     }
     th {
         text-align: left;
-        font-size: 11px;
+        font-size: 14px;
+        font-weight: 900;
     }
     td {
-        font-size: 11px;
+        font-size: 14px;
     }
     td:last-child, th:last-child {
         text-align: right;
     }
     .footer {
         text-align: center;
-        font-size: 11px;
-        margin-top: 6px;
+        font-size: 13px;
+        margin-top: 8px;
         border-top: 1px dashed #000;
-        padding-top: 4px;
+        padding-top: 6px;
     }
     @media print {
         @page {
@@ -63,9 +65,10 @@
             padding: 0;
             width: 100%;
             height: auto;
+            font-size: 13.5px !important;
         }
         .receipt-container {
-            width: 74mm !important;
+            width: 76mm !important;
             max-width: 100% !important;
             margin: 0 auto !important;
             padding: 2mm !important;
@@ -82,11 +85,11 @@
         }
         th, td {
             white-space: normal !important;
-            padding: 1px !important;
-            font-size: 10px !important;
+            padding: 2px 1px !important;
+            font-size: 13px !important;
         }
         body {
-            font-size: 10px !important;
+            font-size: 13.5px !important;
         }
     }
     .page-break {

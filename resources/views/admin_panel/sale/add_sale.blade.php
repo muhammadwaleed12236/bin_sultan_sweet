@@ -105,14 +105,20 @@
 .mod-hdr h5{margin:0;font-size:15px;font-weight:700}
 .mod-x{width:32px;height:32px;border-radius:50%;border:2px solid rgba(255,255,255,.5);background:rgba(255,255,255,.15);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;transition:.15s}
 .mod-x:hover{background:rgba(255,255,255,.3)}
-.sz-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:10px;margin-bottom:14px}
-.szc{border:2px solid #e0e4ef;border-radius:11px;padding:12px 8px;cursor:pointer;text-align:center;transition:.18s;position:relative}
-.szc:hover{border-color:#667eea;transform:translateY(-2px);box-shadow:0 4px 12px rgba(102,126,234,.15)}
-.szc.sel{border-color:#667eea;background:linear-gradient(135deg,#f0f4ff,#e8ecff)}
-.szc.sel::after{content:'✓';position:absolute;top:4px;right:7px;color:#667eea;font-weight:900;font-size:13px}
-.slabel{font-size:13px;font-weight:700;color:#2d3748}
-.sprice{font-size:14px;font-weight:900;color:#27ae60;margin-top:3px}
-.sstk{font-size:10px;color:#999;margin-top:2px}
+.sz-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:11px;margin-bottom:14px}
+.szc{border:2px solid #e0e4ef;border-radius:12px;padding:12px 10px;cursor:pointer;text-align:center;transition:all .18s;position:relative;background:#fff;display:flex;flex-direction:column;justify-content:space-between;min-height:96px}
+.szc:hover{border-color:#667eea;transform:translateY(-2px);box-shadow:0 4px 14px rgba(102,126,234,.16)}
+.szc.has-stock{border-color:#c3e6cb;background:#fbfdfc}
+.szc.out-stock{border-color:#edf0f5;background:#f9f9f9;opacity:.75}
+.szc.out-stock:hover{opacity:1;border-color:#f5c6cb}
+.szc.sel{border-color:#667eea!important;background:linear-gradient(135deg,#f0f4ff,#e8ecff)!important;opacity:1!important;box-shadow:0 4px 14px rgba(102,126,234,.22)}
+.szc.sel::after{content:'✓';position:absolute;top:5px;right:7px;background:#667eea;color:#fff;width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:10px;line-height:1}
+.slabel{font-size:13px;font-weight:700;color:#2d3748;line-height:1.25;margin-bottom:3px}
+.sprice{font-size:15px;font-weight:900;color:#27ae60;margin-bottom:5px}
+.sstk-wrap{margin-top:auto}
+.sstk-badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;line-height:1.2}
+.sstk-badge.in-stock{background:#e8f8f0;color:#1b8a4d;border:1px solid #b7ebd0}
+.sstk-badge.zero-stock{background:#feecef;color:#e53935;border:1px solid #fccfd6}
 .man-sec{background:#f8f9fe;border:1.5px dashed #c5d0f0;border-radius:11px;padding:12px 14px;margin-bottom:2px}
 .man-sec h6{font-size:12.5px;font-weight:700;color:#667eea;margin-bottom:8px}
 .man-sec .form-label{font-size:11.5px;font-weight:600;color:#666;margin-bottom:3px}
@@ -863,7 +869,24 @@ function openSzModal(p) {
     .then(r=>r.json()).then(data=>{ 
         curProd.variants = data.variants; 
         renderSizes(data.variants); 
-        document.getElementById('szTitle').innerHTML = '📦 Size — ' + data.item_name + ' <small class="badge bg-dark ms-2" style="font-size:11px">Avail: ' + fmtStk(data.total_stock, data.unit_type) + '</small>';
+
+        const inStockCount = (data.variants || []).filter(v => (parseFloat(v.stock) || 0) > 0).length;
+        const totalCount   = (data.variants || []).length;
+        const totalStock   = parseFloat(data.total_stock) || 0;
+
+        document.getElementById('szTitle').innerHTML = `
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 w-100 pe-2">
+                <span>📦 Size / Variant — <strong>${data.item_name}</strong></span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge ${totalStock > 0 ? 'bg-success' : 'bg-danger'}" style="font-size:12px; padding:5px 9px;">
+                        <i class="la la-${totalStock > 0 ? 'check' : 'times'}-circle me-1"></i>Avail: <strong>${fmtStk(totalStock, data.unit_type)}</strong>
+                    </span>
+                    <span class="badge bg-light text-dark border" style="font-size:11px; padding:5px 8px;">
+                        <strong class="${inStockCount > 0 ? 'text-success' : 'text-danger'}">${inStockCount}</strong> of ${totalCount} Sizes in Stock
+                    </span>
+                </div>
+            </div>
+        `;
         
         // ⌨️ Focus: KG → By Grams, otherwise → Qty
         setTimeout(function() {
@@ -886,15 +909,39 @@ function renderSizes(variants) {
         g.innerHTML = '<p class="text-muted p-3">Koi size nahi mili.</p>';
         return;
     }
-    let defaultSet = false;
+
+    // Determine initial selection: prefer default if it has stock, else first in-stock, else default/first
+    let selectedIdx = -1;
+    const defaultIdx = variants.findIndex(v => v.is_default);
+    
+    if (defaultIdx !== -1 && parseFloat(variants[defaultIdx].stock) > 0) {
+        selectedIdx = defaultIdx;
+    } else {
+        const firstInStockIdx = variants.findIndex(v => parseFloat(v.stock) > 0);
+        if (firstInStockIdx !== -1) {
+            selectedIdx = firstInStockIdx;
+        } else {
+            selectedIdx = defaultIdx !== -1 ? defaultIdx : 0;
+        }
+    }
+
     variants.forEach(function(v, i) {
+        const isSelected = (i === selectedIdx);
+        const stockQty = parseFloat(v.stock) || 0;
+        const hasStock = stockQty > 0;
+        
         const c = document.createElement('div');
-        c.className = 'szc' + (v.is_default ? ' sel' : '');
-        const stkTxt = v.stock > 0 ? ('Stk:' + fmtStk(v.stock, curProd.unit_type)) : 'Low/Out';
-        c.innerHTML =
-            '<div class="slabel">' + (v.size_label || v.name || '') + '</div>'
-            + '<div class="sprice">Rs ' + fmt(v.price) + '</div>'
-            + '<div class="sstk">' + stkTxt + '</div>';
+        c.className = 'szc' + (isSelected ? ' sel' : '') + (hasStock ? ' has-stock' : ' out-stock');
+        
+        const stkBadge = hasStock 
+            ? `<div class="sstk-wrap"><span class="sstk-badge in-stock"><i class="la la-check-circle me-1"></i><strong>${fmtStk(stockQty, curProd.unit_type)}</strong> Avail</span></div>`
+            : `<div class="sstk-wrap"><span class="sstk-badge zero-stock"><i class="la la-times-circle me-1"></i>Out of Stock (0)</span></div>`;
+
+        c.innerHTML = `
+            <div class="slabel" title="${v.size_label || v.name || ''}">${v.size_label || v.name || ''}</div>
+            <div class="sprice">Rs ${fmt(v.price)}</div>
+            ${stkBadge}
+        `;
 
         // IMPORTANT: store index and variant on element for reliable access
         c._varIdx = i;
@@ -905,20 +952,12 @@ function renderSizes(variants) {
         });
         g.appendChild(c);
 
-        if (v.is_default && !defaultSet) {
-            defaultSet = true;
+        if (isSelected) {
             selVarI = i;
             document.getElementById('mPrice').value = v.price;
             document.getElementById('mLabel').value = v.size_label || v.name || '';
         }
     });
-    // If no default, auto-select first
-    if (!defaultSet && variants.length) {
-        selVarI = 0;
-        g.firstElementChild.classList.add('sel');
-        document.getElementById('mPrice').value = variants[0].price;
-        document.getElementById('mLabel').value = variants[0].size_label || variants[0].name || '';
-    }
 }
 
 function selectSz(el, i, v) {

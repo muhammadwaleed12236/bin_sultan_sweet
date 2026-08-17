@@ -190,13 +190,25 @@ class SaleController extends Controller
                     $statusBadge = '<span class="sale-status-badge status-return"><i class="fa-solid fa-rotate-left me-1"></i>Return</span>';
                 }
 
-                // Action Buttons
-                $actions = '<div class="sale-action-group">
-                    <a href="'.route('sales.recepit', $sale->id).'" class="sale-action-btn btn-print" target="_blank" title="Print Bill"><i class="fa-solid fa-print"></i><span>Bill</span></a>
-                    <a href="'.route('sales.invoice', $sale->id).'" class="sale-action-btn btn-invoice" target="_blank" title="Invoice"><i class="fa-solid fa-file-invoice"></i><span>Invoice</span></a>
-                    <a href="'.route('sales.dc', $sale->id).'" class="sale-action-btn btn-dc" target="_blank" title="DC"><i class="fa-solid fa-truck-fast"></i><span>DC</span></a>
-                    <a href="'.route('sales.edit', $sale->id).'" class="sale-action-btn btn-edit" title="Edit"><i class="fa-solid fa-pen-to-square"></i><span>Edit</span></a>
-                    <a href="'.route('sales.return.create', $sale->id).'" class="sale-action-btn btn-return" title="Return"><i class="fa-solid fa-rotate-left"></i><span>Return</span></a>
+                // Action Buttons (Clean Wrapped Group with Tooltips & Dropdown)
+                $actions = '<div class="d-inline-flex align-items-center gap-1 flex-nowrap">
+                    <a href="'.route('sales.recepit', $sale->id).'" class="btn btn-sm btn-dark py-1 px-2 fw-bold text-white text-nowrap" target="_blank" title="Print Thermal Bill" style="font-size: 11.5px; border-radius: 6px; text-decoration: none;">
+                        <i class="fa-solid fa-print me-1"></i>Bill
+                    </a>
+                    <a href="'.route('sales.invoice', $sale->id).'" class="btn btn-sm py-1 px-2 fw-bold text-white text-nowrap" target="_blank" title="View Full Invoice" style="font-size: 11.5px; border-radius: 6px; background:#0284c7; border-color:#0284c7; text-decoration: none;">
+                        <i class="fa-solid fa-file-invoice me-1"></i>Invoice
+                    </a>
+                    <div class="dropdown d-inline-block">
+                        <button class="btn btn-sm btn-outline-secondary py-1 px-2 dropdown-toggle fw-semibold" type="button" data-bs-toggle="dropdown" data-toggle="dropdown" aria-expanded="false" style="font-size: 11.5px; border-radius: 6px; background:#fff;">
+                            More
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-1" style="font-size: 12.5px; min-width: 160px; z-index: 1050;">
+                            <li><a class="dropdown-item py-2 px-3 fw-medium" href="'.route('sales.dc', $sale->id).'" target="_blank"><i class="fa-solid fa-truck-fast text-success me-2"></i> Delivery Challan</a></li>
+                            <li><a class="dropdown-item py-2 px-3 fw-medium" href="'.route('sales.edit', $sale->id).'"><i class="fa-solid fa-pen-to-square text-primary me-2"></i> Edit Sale</a></li>
+                            <li><hr class="dropdown-divider my-1"></li>
+                            <li><a class="dropdown-item py-2 px-3 fw-medium text-danger" href="'.route('sales.return.create', $sale->id).'"><i class="fa-solid fa-rotate-left text-danger me-2"></i> Sale Return</a></li>
+                        </ul>
+                    </div>
                 </div>';
                 
                 // Date formatting
@@ -891,8 +903,8 @@ class SaleController extends Controller
             }
 
             // --- Fill common fields ---
-            $model->customer             = $request->customer;
-            $model->reference            = $request->reference;
+            $model->customer             = $request->customer ?? 'Walk-in Customer';
+            $model->reference            = $request->reference ?? '';
             $model->product              = implode(',', $combined_product_ids);
             $model->product_code         = implode(',', $combined_codes);
             $model->brand                = implode(',', $combined_brands);
@@ -1184,8 +1196,8 @@ class SaleController extends Controller
             }
 
             // Update Sale record
-            $sale->customer        = $request->customer;
-            $sale->reference       = $request->reference;
+            $sale->customer        = $request->customer ?? ($sale->customer ?? 'Walk-in Customer');
+            $sale->reference       = $request->reference ?? ($sale->reference ?? '');
             $sale->product         = implode(',', $combined_products);
             $sale->variant_id      = implode(',', $combined_variant_ids);
             $sale->product_code    = implode(',', $combined_codes);
@@ -2340,8 +2352,8 @@ class SaleController extends Controller
             // --- Save updated Sale ---
             $old_total = $sale->total_net;
 
-            $sale->customer            = $request->customer;
-            $sale->reference           = $request->reference;
+            $sale->customer            = $request->customer ?? ($sale->customer ?? 'Walk-in Customer');
+            $sale->reference           = $request->reference ?? ($sale->reference ?? '');
             $sale->product             = implode(',', $combined_products);
             $sale->variant_id          = implode(',', $combined_variant_ids);
             $sale->product_code        = implode(',', $combined_codes);
@@ -2352,13 +2364,13 @@ class SaleController extends Controller
             $sale->qty                 = implode(',', $combined_qtys);
             $sale->per_total           = implode(',', $combined_totals);
             $sale->color               = json_encode($combined_colors);
-            $sale->total_amount_Words  = $request->total_amount_Words;
-            $sale->total_bill_amount   = $request->total_subtotal;
-            $sale->total_extradiscount = $request->total_extra_cost;
-            $sale->total_net           = $request->total_net;
-            $sale->cash                = $request->cash;
-            $sale->card                = $request->card;
-            $sale->change              = $request->change;
+            $sale->total_amount_Words  = $request->total_amount_Words ?? ($sale->total_amount_Words ?? '');
+            $sale->total_bill_amount   = $request->total_subtotal ?? ($sale->total_bill_amount ?? 0);
+            $sale->total_extradiscount = $request->total_extra_cost ?? ($sale->total_extradiscount ?? 0);
+            $sale->total_net           = $request->total_net ?? ($sale->total_net ?? 0);
+            $sale->cash                = $request->cash ?? ($sale->cash ?? 0);
+            $sale->card                = $request->card ?? ($sale->card ?? 0);
+            $sale->change              = $request->change ?? ($sale->change ?? 0);
             $sale->total_items         = $total_items;
             $sale->save();
 
