@@ -5,8 +5,12 @@ $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
 use App\Models\Product;
-$p1 = Product::where('item_name', 'like', '%ALUU SAMOSA%')->first();
-echo "ALUU SAMOSA initial stock: " . ($p1->initial_stock ?? 'N/A') . "\n";
+use Illuminate\Support\Facades\DB;
 
 $p2 = Product::where('item_name', 'like', '%MILKY BREAD%')->first();
-echo "MILKY BREAD initial stock: " . ($p2->initial_stock ?? 'N/A') . "\n";
+if ($p2) {
+    echo "Product ID: " . $p2->id . "\n";
+    $stocks = DB::table('stocks')->where('product_id', $p2->id)->get();
+    echo "Stocks:\n";
+    print_r($stocks->toArray());
+}
