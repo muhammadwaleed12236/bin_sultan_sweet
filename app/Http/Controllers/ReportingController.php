@@ -384,6 +384,9 @@ class ReportingController extends Controller
                     $netMovementsBefore = $purchBef + $prodBef + $sRetBef - $soldBef - $pRetBef + $adjIncBef - $adjDecBef;
 
                     $openingStock = $baseInitial + $netMovementsBefore;
+                    if ($openingStock < 0) {
+                        $openingStock = 0;
+                    }
                     $netMovementsInPeriod = $purchased + $produced + $sReturn - $sold - $pReturn + $adjInc - $adjDec;
                     $closingStock = $openingStock + $netMovementsInPeriod;
 
@@ -507,6 +510,9 @@ class ReportingController extends Controller
                 $netMovementsBefore = $purchBef + $prodBef + $sRetBef - $soldBef - $pRetBef + $adjIncBef - $adjDecBef;
 
                 $openingStock = $baseInitial + $netMovementsBefore;
+                if ($openingStock < 0) {
+                    $openingStock = 0;
+                }
                 $netMovementsInPeriod = $purchased + $produced + $sReturn - $sold - $pReturn + $adjInc - $adjDec;
                 $closingStock = $openingStock + $netMovementsInPeriod;
 
